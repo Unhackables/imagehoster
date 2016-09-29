@@ -1,5 +1,0 @@
-{
-    "port": 3234,
-    "amazonBucket": "steem-upload-manager-test",
-    "imagePrefix": "http://localhost:3234/images/"
-}
