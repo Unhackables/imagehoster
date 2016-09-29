@@ -1,0 +1,22 @@
+{
+  "name": "steem-upload-manager",
+  "version": "1.0.0",
+  "description": "",
+  "main": "upload-image.js",
+  "scripts": {
+    "start": "NODE_ENV=development babel-node --presets es2015 ./app/server/server.js ",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "aws-sdk": "^2.6.5",
+    "koa": "^1.2.4",
+    "koa-body": "^1.5.0",
+    "koa-router": "^5.4.0"
+  },
+  "devDependencies": {
+    "babel-cli": "^6.16.0",
+    "webpack": "^1.13.2"
+  }
+}
