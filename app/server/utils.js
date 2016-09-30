@@ -1,3 +1,10 @@
+export function missing(ctx, fields, name) {
+    if(!fields || !fields[name]) {
+        this.status = 404
+        this.statusText = `Required field: ${name}`
+        return true
+    }
+}
 
 export function getRemoteIp(req) {
     const remote_address = req.headers['x-forwarded-for'] || req.connection.remoteAddress;

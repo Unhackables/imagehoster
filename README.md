@@ -16,8 +16,8 @@ cp server-config-example.json server-config-dev.json
 
 #### Example upload
 
-`curl -F "data=@$HOME/Pictures/blue_red_pill.jpg" -F "username=slim" http://localhost:3234/upload`
+`curl -v -F "data=@$HOME/Pictures/blue_red_pill.jpg" http://localhost:3234/image`
 
 Use the hash from above and verify:
 
-`curl http://localhost:3234/fetch/a190c0596a37398427e51bcbee7c94f1007075629828d62005735c6c2d2ffeef|sha256sum`
+`curl -v http://localhost:3234/image/a190c0596a37398427e51bcbee7c94f1007075629828d62005735c6c2d2ffeef|sha256sum`

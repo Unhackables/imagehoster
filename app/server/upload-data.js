@@ -1,7 +1,7 @@
 
 import AWS from 'aws-sdk'
-import config from '../../config/server-config'
-import {rateLimitReq} from './utils'
+import config from 'config/server-config'
+import {rateLimitReq, missing} from 'app/server/utils'
 import fs from 'fs'
 import {hash} from 'shared/ecc'
 
@@ -16,29 +16,34 @@ const koaBody = require('koa-body')({
     // formidable: { uploadDir: '/tmp', }
 })
 
-router.post('/upload', koaBody, function *() {
+router.post('/:type', koaBody, function *() {
     try {
-        const {fields, files} = this.request.body
-        const {username} = fields
+        const {files, fields} = this.request.body
 
         if(missing(this, files, 'data')) return
-        if(missing(this, fields, 'username')) return
+        // if(missing(this, fields, 'username')) return
+        if(missing(this, this.params, 'type')) return
 
-        // console.log('files', files)
-        // console.log('fields', fields)
-
-        // Question: How can I keep a multipart file in memory?
-        // https://github.com/dlau/koa-body/issues/40
+        // const {username} = fields
+        const {type} = this.params
+        if(type !== 'image') {
+            this.status = 404
+            this.statusText = `Unsupported type ${type}.  Try using 'image'` 
+            return
+        }
+        
+        // Question: How can I keep a multipart form upload in memory (skip the file)?
+        // https://github.com/tunnckoCore/koa-better-body/issues/67
         yield new Promise(resolve => {
             fs.readFile(files.data.path, 'binary', (err, data) => {
                 if(err) return console.error(err)
                 fs.unlink(files.data.path)
                 const dataBuffer = new Buffer(data, 'binary')
-                const key = hash.sha256(dataBuffer, 'hex')
+                const key = `${type}/${hash.sha256(dataBuffer, 'hex')}`
                     const params = {Bucket: amazonBucket, Key: key, Body: dataBuffer};
                     s3.putObject(params, (err, data) => {
                         if(err) {
-                            console.log(err)     
+                            console.log(err)
                             this.status = 404
                             this.statusText = `Error uploading ${key}.` 
                             resolve()
@@ -51,17 +56,7 @@ router.post('/upload', koaBody, function *() {
                 })
             })
         })
-
-
     } catch(error) {console.error(error)} 
 })
 
 export default router.routes()
-
-function missing(ctx, fields, name) {
-    if(!fields[name]) {
-        this.status = 404
-        this.statusText = `Required field: ${name}`
-        return true
-    }
-}

@@ -1,6 +1,7 @@
 import RateLimit from './RateLimit'
-import config from '../../config/server-config'
-import s3 from './amazon-bucket'
+import config from 'config/server-config'
+import s3 from 'app/server/amazon-bucket'
+import {missing} from 'app/server/utils'
 
 const {amazonBucket} = config
 
@@ -9,10 +10,16 @@ const limit = new RateLimit({ duration: hour, max: 60 * 60, verbose: false })
 
 const router = require('koa-router')()
 
-router.get('/fetch/:key', function *() {
+router.get('/:type/:hash', function *() {
     try {
         if (limit.byIp(this)) return;
-        const {key} = this.params
+
+        if(missing(this, this.params, 'type')) return
+        if(missing(this, this.params, 'hash')) return
+
+        const {type, hash} = this.params
+        const key = `${type}/${hash}`
+
         yield new Promise(resolve => {
             const params = {Bucket: amazonBucket, Key: key};
             s3.getObject(params, (err, data) => {
