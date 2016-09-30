@@ -2,9 +2,9 @@
   "name": "steem-upload-manager",
   "version": "1.0.0",
   "description": "",
-  "main": "upload-image.js",
+  "main": "upload-data.js",
   "scripts": {
-    "start": "NODE_ENV=development babel-node --presets es2015 ./app/server/server.js ",
+    "start": "NODE_ENV=development NODE_PATH=. babel-node --presets es2015 ./app/server/server.js ",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
