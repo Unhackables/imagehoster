@@ -1,5 +1,5 @@
 import RateLimit from './RateLimit'
-import config from 'config/server-config'
+import config from 'config'
 import s3 from 'app/server/amazon-bucket'
 import {missing} from 'app/server/utils'
 

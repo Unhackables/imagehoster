@@ -1,11 +1,11 @@
 
 import AWS from 'aws-sdk'
-import config from 'config/server-config'
+import config from 'config'
 import {rateLimitReq, missing} from 'app/server/utils'
 import fs from 'fs'
 import {hash} from 'shared/ecc'
 
-const {amazonBucket, dataUrlPrefix} = config
+const {amazonBucket, protocol, host, port} = config
 const s3 = new AWS.S3()
 
 const router = require('koa-router')()
@@ -39,7 +39,8 @@ router.post('/:type', koaBody, function *() {
                 if(err) return console.error(err)
                 fs.unlink(files.data.path)
                 const dataBuffer = new Buffer(data, 'binary')
-                const key = `${type}/${hash.sha256(dataBuffer, 'hex')}`
+                const sha = hash.sha256(dataBuffer)
+                const key = `${type}/${sha.toString('hex')}`
                     const params = {Bucket: amazonBucket, Key: key, Body: dataBuffer};
                     s3.putObject(params, (err, data) => {
                         if(err) {
@@ -50,7 +51,7 @@ router.post('/:type', koaBody, function *() {
                             return
                         }
                         console.log(`Uploaded ${amazonBucket}/${key}`);
-                        const url = `${dataUrlPrefix}${key}`
+                        const url = `${protocol}://${host}:${port}/${key}`
                         this.body = {files: [{url}]}
                         resolve()
                 })

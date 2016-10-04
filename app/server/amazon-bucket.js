@@ -1,6 +1,6 @@
 
 import AWS from 'aws-sdk'
-import config from '../../config/server-config'
+import config from 'config'
 
 const {amazonBucket} = config
 

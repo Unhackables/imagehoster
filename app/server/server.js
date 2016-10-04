@@ -1,7 +1,10 @@
 import Koa from 'koa';
 import uploadData from './upload-data'
 import dataServer from './data-server'
-import config from 'config/server-config'
+import config from 'config'
+import Apis from 'shared/api_client/ApiInstances'
+
+Apis.instance().init()
 
 const app = new Koa()
 

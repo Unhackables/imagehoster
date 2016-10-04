@@ -1,5 +1,6 @@
 script-compiled.js
-config/server-config-dev.json
 node_modules
 npm-debug.log
 bundle.js
+env_dev.sh
+env_prod.sh
