@@ -89,7 +89,7 @@ router.post('/:type/:username/:signature', koaBody, function *() {
                         resolve()
                         return
                     }
-                    console.log(`Uploaded ${amazonBucket}/${key}`);
+                    console.log(`Uploaded s3://${amazonBucket}/${key}`);
                     const url = `${protocol}://${host}:${port}/${key}`
                     this.body = {files: [{url}]}
                     resolve()
