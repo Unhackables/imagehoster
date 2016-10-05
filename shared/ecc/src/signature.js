@@ -112,6 +112,11 @@ class Signature {
         return this.verifyHash(_hash, public_key);
     };
 
+    /**
+        @param {Buffer} sha256 hash
+        @param {./PublicKey}
+        @return {boolean}
+    */
     verifyHash(hash, public_key) {
         assert.equal(hash.length, 32, "A SHA 256 should be 32 bytes long, instead got " + hash.length);
         return ecdsa.verify(curve, hash, {
