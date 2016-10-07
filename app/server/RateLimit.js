@@ -1,6 +1,6 @@
 import {Map, List} from 'immutable'
 
-const INFO_LOG = false
+const INFO_LOG = true
 
 export default class RateLimit {
 

@@ -46,8 +46,9 @@ function esc(value, max_length = 256) {
 }
 
 export function limit(ctx, limits, key, description, unitLabel, amount = 1) {
+    const limitArray = Array.isArray(limits) ? limits : [limits]
     try {
-        limits.forEach(limit => {
+        limitArray.forEach(limit => {
             const {over, desc} = limit.over(key, amount, description, unitLabel)
             if(over) throw desc
         })

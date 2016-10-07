@@ -23,7 +23,10 @@ const config = {
         megsPerHour: parseFloat(process.env.STEEMIT_UPLOAD_MEGS_PER_HOUR || 200),
         megsPerDay: parseFloat(process.env.STEEMIT_UPLOAD_MEGS_PER_DAY || 300),
         megsPerWeek: parseFloat(process.env.STEEMIT_UPLOAD_MEGS_PER_WEEK || 300),
-    }
+    },
+    downloadIpLimit: {
+        requestPerHour: parseFloat(process.env.STEEMIT_DOWNLOAD_REQ_PER_HOUR || 3600),
+    },
 
 }
 if(!AWS.config.accessKeyId) throw new Error('Missing STEEMIT_UPLOAD_AWS_KEY_ID')
