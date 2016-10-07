@@ -11,7 +11,19 @@ export default {
     host: process.env.STEEMIT_UPLOAD_HTTP_HOST || 'localhost',
     port: process.env.STEEMIT_UPLOAD_HTTP_PORT || 3234,
     amazonBucket: process.env.STEEMIT_UPLOAD_AMAZON_BUCKET || "steem-upload-manager-test",
-    testKey: toBoolean(process.env.STEEMIT_UPLOAD_TEST_KEY)
+    testKey: toBoolean(process.env.STEEMIT_UPLOAD_TEST_KEY),
+    uploadIpLimit: {
+        minRep: parseFloat(process.env.STEEMIT_UPLOAD_MIN_REP || 10),
+        requestPerMinute: parseFloat(process.env.STEEMIT_UPLOAD_REQ_PER_MINUTE || 60),
+        requestPerHour: parseFloat(process.env.STEEMIT_UPLOAD_REQ_PER_HOUR || 70),
+        requestPerDay: parseFloat(process.env.STEEMIT_UPLOAD_REQ_PER_DAY || 80),
+    },
+    uploadDataLimit: {
+        megsPerMinute: parseFloat(process.env.STEEMIT_UPLOAD_MEGS_PER_MINUTE || 200),
+        megsPerHour: parseFloat(process.env.STEEMIT_UPLOAD_MEGS_PER_HOUR || 200),
+        megsPerDay: parseFloat(process.env.STEEMIT_UPLOAD_MEGS_PER_DAY || 300),
+        megsPerWeek: parseFloat(process.env.STEEMIT_UPLOAD_MEGS_PER_WEEK || 300),
+    }
 }
 
 if(!AWS.config.accessKeyId) throw new Error('Missing STEEMIT_UPLOAD_AWS_KEY_ID')

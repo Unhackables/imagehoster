@@ -2,14 +2,18 @@
 import AWS from 'aws-sdk'
 import config from 'config'
 import Apis from 'shared/api_client/ApiInstances'
+import RateLimit, {ms} from 'app/server/RateLimit'
 
 import fs from 'fs'
-import {rateLimitReq, missing} from 'app/server/utils'
+import {repLog10} from 'app/server/utils'
+import {missing, getRemoteIp, limit} from 'app/server/utils-koa'
 import {hash, Signature, PublicKey, PrivateKey} from 'shared/ecc'
 
 const testKey = config.testKey ? PrivateKey.fromSeed('').toPublicKey() : null
 
 const {amazonBucket, protocol, host, port} = config
+const {uploadIpLimit, uploadDataLimit} = config
+
 const s3 = new AWS.S3()
 
 const router = require('koa-router')()
@@ -20,8 +24,24 @@ const koaBody = require('koa-body')({
     // formidable: { uploadDir: '/tmp', }
 })
 
+const requestIpRateLimits = [
+    new RateLimit({duration: ms.minute, max: uploadIpLimit.requestPerMinute}),
+    new RateLimit({duration: ms.hour, max: uploadIpLimit.requestPerHour}),
+    new RateLimit({duration: ms.day, max: uploadIpLimit.requestPerDay}),
+]
+
+const requestDataRateLimits = [
+    new RateLimit({duration: ms.minute, max: uploadDataLimit.megsPerMinute}),
+    new RateLimit({duration: ms.hour, max: uploadDataLimit.megsPerHour}),
+    new RateLimit({duration: ms.day, max: uploadDataLimit.megsPerDay}),
+    new RateLimit({duration: ms.week, max: uploadDataLimit.megsPerWeek}),
+]
+
 router.post('/:type/:username/:signature', koaBody, function *() {
     try {
+        const ip = getRemoteIp(this.req)
+        if(limit(this, requestIpRateLimits, ip, 'Uploads', 'request')) return
+
         const {files, fields} = this.request.body
 
         if(missing(this, files, 'data')) return
@@ -42,7 +62,18 @@ router.post('/:type/:username/:signature', koaBody, function *() {
         const sig = Signature.fromHex(signature)
 
         const {username} = this.params
-        const [{posting: {key_auths}, weight_threshold}] = yield Apis.db_api('get_accounts', [this.params.username])
+        const [account] = yield Apis.db_api('get_accounts', [this.params.username])
+        const {posting: {key_auths}, weight_threshold, reputation} = account
+
+        const rep = repLog10(reputation)
+        if(rep < config.uploadIpLimit.minRep) {
+            this.status = 404
+            this.statusText = `Your reputation must be at least ${config.uploadIpLimit.minRep} to upload.` 
+            this.body = {error: this.statusText}
+            console.log(`Upload by '${username}' blocked: reputation ${rep} < ${config.uploadIpLimit.minRep}`);
+            return
+        }
+
         const [[posting_pubkey, weight]] = key_auths
         if(weight < weight_threshold) {
             this.status = 404
@@ -66,6 +97,12 @@ router.post('/:type/:username/:signature', koaBody, function *() {
                     return
                 }
                 fs.unlink(files.data.path)
+
+                const megs = data.length / (1024 * 1024)
+                if(limit(this, requestDataRateLimits, username, 'Upload size', 'megabytes', megs)) {
+                    resolve()
+                    return
+                }
 
                 const dataBuffer = new Buffer(data, 'binary')
 

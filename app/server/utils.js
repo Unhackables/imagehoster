@@ -1,53 +1,27 @@
-export function missing(ctx, fields, name) {
-    if(!fields || !fields[name]) {
-        this.status = 404
-        this.statusText = `Required field: ${name}`
-        return true
-    }
+
+/**
+    This is a rough approximation of log10 that works with huge digit-strings.
+    Warning: Math.log10(0) === NaN
+*/
+function log10(str) {
+    const leadingDigits = parseInt(str.substring(0, 4));
+    const log = Math.log(leadingDigits) / Math.log(10)
+    const n = str.length - 1;
+    return n + (log - parseInt(log));
 }
 
-export function getRemoteIp(req) {
-    const remote_address = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-    const ip_match = remote_address ? remote_address.match(/(\d+\.\d+\.\d+\.\d+)/) : null;
-    return ip_match ? ip_match[1] : esc(remote_address);
-}
+export const repLog10 = rep2 => {
+    if(rep2 == null) return rep2
+    let rep = String(rep2)
+    const neg = rep.charAt(0) === '-'
+    rep = neg ? rep.substring(1) : rep
 
-// function checkCSRF(ctx, csrf) {
-//     try { ctx.assertCSRF(csrf); } catch (e) {
-//         ctx.status = 403;
-//         ctx.body = 'invalid csrf token';
-//         console.log('-- invalid csrf token -->', ctx.request.method, ctx.request.url, ctx.session.uid);
-//         return false;
-//     }
-//     return true;
-// }
-
-function esc(value, max_length = 256) {
-    if (!value) return '';
-    if (typeof value === 'number') return value;
-    if (typeof value !== 'string') return '(object)';
-    let res = value.substring(0, max_length - max_length * 0.2).replace(/[\0\x08\x09\x1a\n\r"'\\\%]/g, function (char) {
-        switch (char) {
-            case '\0':
-                return '\\0';
-            case '\x08':
-                return '\\b';
-            case '\x09':
-                return '\\t';
-            case '\x1a':
-                return '\\z';
-            case '\n':
-                return '\\n';
-            case '\r':
-                return '\\r';
-            // case '\'':
-            // case "'":
-            // case '"':
-            // case '\\':
-            // case '%':
-            //     return '\\' + char; // prepends a backslash to backslash, percent, and double/single quotes
-        }
-        return '-';
-    });
-    return res.length < max_length ? res : '-';
+    let out = log10(rep)
+    if(isNaN(out)) out = 0
+    out = Math.max(out - 9, 0); // @ -9, $0.50 earned is approx magnitude 1
+    out = (neg ? -1 : 1) * out
+    out = (out * 9) + 25 // 9 points per magnitude. center at 25
+    // base-line 0 to darken and < 0 to auto hide (grep rephide)
+    out = parseInt(out)
+    return out
 }
