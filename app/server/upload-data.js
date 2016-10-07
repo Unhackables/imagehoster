@@ -69,6 +69,12 @@ router.post('/:type/:username/:signature', koaBody, function *() {
 
         const {username} = this.params
         const [account] = yield Apis.db_api('get_accounts', [this.params.username])
+        if(!account) {
+            this.status = 404
+            this.statusText = `Account '${this.params.username}' is not found on the blockchain.` 
+            this.body = {error: this.statusText}
+            return
+        }
         const {posting: {key_auths}, weight_threshold, reputation} = account
 
         const rep = repLog10(reputation)
