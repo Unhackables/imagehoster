@@ -1,10 +1,12 @@
 
 export function missing(ctx, fields, name) {
     if(!fields || !fields[name]) {
-        this.status = 404
-        this.statusText = `Required field: ${name}`
+        ctx.status = 404
+        ctx.statusText = `Required field: ${name}`
+        ctx.body = {error: ctx.statusText}
         return true
     }
+    return false
 }
 
 export function getRemoteIp(req) {

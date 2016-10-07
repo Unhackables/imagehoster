@@ -59,7 +59,13 @@ router.post('/:type/:username/:signature', koaBody, function *() {
         }
         
         const {signature} = this.params
-        const sig = Signature.fromHex(signature)
+        const sig = parseSig(signature)
+        if(!sig) {
+            this.status = 404
+            this.statusText = `Unable to parse signature (expecting HEX data).` 
+            this.body = {error: this.statusText}
+            return
+        }
 
         const {username} = this.params
         const [account] = yield Apis.db_api('get_accounts', [this.params.username])
@@ -137,3 +143,5 @@ router.post('/:type/:username/:signature', koaBody, function *() {
 })
 
 export default router.routes()
+
+const parseSig = hexSig => {try {return Signature.fromHex(hexSig)} catch(e) {return null}}
