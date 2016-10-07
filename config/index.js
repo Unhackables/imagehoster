@@ -5,7 +5,7 @@ const toBoolean = s => s == null || s.trim() === '' ? false : JSON.parse(s)
 AWS.config.accessKeyId = process.env.STEEMIT_UPLOAD_AWS_KEY_ID
 AWS.config.secretAccessKey = process.env.STEEMIT_UPLOAD_AWS_SECRET_KEY
 
-export default {
+const config = {
     ws_connection_server: process.env.STEEMIT_UPLOAD_STEEMD_WEBSOCKET || 'wss://node.steem.ws',
     protocol: process.env.STEEMIT_UPLOAD_HTTP_PROTOCOL || 'http',
     host: process.env.STEEMIT_UPLOAD_HTTP_HOST || 'localhost',
@@ -24,7 +24,13 @@ export default {
         megsPerDay: parseFloat(process.env.STEEMIT_UPLOAD_MEGS_PER_DAY || 300),
         megsPerWeek: parseFloat(process.env.STEEMIT_UPLOAD_MEGS_PER_WEEK || 300),
     }
-}
 
+}
 if(!AWS.config.accessKeyId) throw new Error('Missing STEEMIT_UPLOAD_AWS_KEY_ID')
 if(!AWS.config.secretAccessKey) throw new Error('Missing STEEMIT_UPLOAD_AWS_SECRET_KEY')
+
+if(config.testKey) {
+    console.log('WARNING test key provided, do not use in production.');
+}
+
+export default config
