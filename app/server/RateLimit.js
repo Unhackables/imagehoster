@@ -1,10 +1,13 @@
 import {Map, List} from 'immutable'
 
+const INFO_LOG = false
+
 export default class RateLimit {
 
     /**
-        duration: 60 * 60 * 1000, // 1 hour
-        max: npm_package_config_network_ip_requests_per_hour
+        @arg {object} config
+        @arg {number} config.duration milliseconds (60 * 60 * 1000 === 1 hour)
+        @arg {number} config.max available within duration (compared with sum(amount)) 
     */
     constructor(config) {
         required(config, 'duration')
@@ -13,7 +16,22 @@ export default class RateLimit {
         this.hits = Map()
     }
 
-    over(key, amount = 1) {
+    /**
+        @typedef {Object} OverResult
+        @property {boolean} over quota
+        @property {number} total non-expired quote used
+        @property {number} max max quota available
+        @property {number} duration quota window in milliseconds (probably divides to: N min, N hours, N weeks, etc)
+        @property {string} desc describing the quota and if within or exceeded, or <b>null</b> if this.over(description) was not provided.  
+     */
+    /**
+        @arg {string} key - limit per key.  A value like: George (username), 127.0.0.1 (ip address), etc..
+        @arg {number} [amount = 1] - Amount to increment quota.  Only increments if still within quota.
+        @arg {string} [description] - What is being limited? 'Uploads', 'Upload size' (use capital)
+        @arg {string} [unitLabel] - A label for the amount value (requests, megabytes)
+        @return {OverResult}
+    */
+    over(key, amount = 1, description, unitLabel) {
         const {duration, max} = this.config
 
         const now = Date.now()
@@ -33,8 +51,25 @@ export default class RateLimit {
         hitList.get(key).forEach(event => {total += event.amount})
 
         const over = total > max
+
+        // Update quote for this request
         if(!over) this.hits = hitList
-        return {over, total, max, duration}
+
+        if(over || INFO_LOG) {
+            console.log('Rate limited', `'${key}':`, description,
+                over ? 'exceeded:' : 'are within:',
+                `${total} of ${max} ${unitLabel} per ${aprox(duration)}`
+            )
+        }
+
+        let desc = null
+        if(description) {
+            if(over)
+                desc = `${description} can not exceeded ${max}${unitLabel ? ` ${unitLabel}` : ''} within ${aprox(duration)}`
+            else
+                desc = `${description} is within ${max}${unitLabel ? ` ${unitLabel}` : ''} within ${aprox(duration)}`
+        }
+        return {over, total, max, duration, desc}
     }
 }
 
@@ -47,7 +82,8 @@ export const ms = {
     second: 1000,
 }
 
-export const aprox = duration =>
+// For simplicity, uses plural form: '60 seconds' instead of '1 minute'
+const aprox = duration =>
     // duration > ms.month ? duration / ms.month + ' months' :
     duration > ms.week ? duration / ms.week + ' weeks' :
     duration > ms.day ? duration / ms.day + ' days' :
