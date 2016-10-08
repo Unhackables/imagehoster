@@ -14,6 +14,24 @@ export default class RateLimit {
         required(config, 'max')
         this.config = config
         this.hits = Map()
+        this.garbageCollection()
+    }
+
+    garbageCollection() {
+        // Global cleanup
+        const {duration} = this.config
+        setTimeout(() => {
+            const exp = Date.now() - duration
+            this.hits.forEach((value, key) => {
+                this.hits = this.hits
+                    // Remove expired events
+                    .update(key, events => events.filter(event => event.time > exp))
+            })
+            // Remove keys that no longer have any events
+            this.hits = this.hits.filterNot(events => events.isEmpty())
+            // console.log('Rate limit garbage collection', JSON.stringify(this.hits.toJS(), null, 0))
+            this.garbageCollection()
+        }, 10 * ms.minute)
     }
 
     /**
@@ -34,18 +52,15 @@ export default class RateLimit {
     over(key, amount = 1, description, unitLabel) {
         const {duration, max} = this.config
 
-        const now = Date.now()
-        const expired = now - duration
+        const time = Date.now()
+        const expired = time - duration
 
         const hitList = this.hits
             // Add this event
-            .update(key, List(), events => events.push({now, amount}))
+            .update(key, List(), events => events.push({time, amount}))
 
             // Remove expired events
-            .update(key, events => events.filter(event => event.now > expired))
-
-            // Remove 'other' keys that no longer have any events
-            .filterNot(keys => keys.isEmpty())
+            .update(key, events => events.filter(event => event.time > expired))
 
         let total = 0
         hitList.get(key).forEach(event => {total += event.amount})
