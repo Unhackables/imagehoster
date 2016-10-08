@@ -33,6 +33,9 @@ if(!AWS.config.accessKeyId) throw new Error('Missing STEEMIT_UPLOAD_AWS_KEY_ID')
 if(!AWS.config.secretAccessKey) throw new Error('Missing STEEMIT_UPLOAD_AWS_SECRET_KEY')
 
 if(config.testKey) {
+    if(process.env.NODE_ENV === 'production') {
+        throw new Error('ERROR test key provided, do not use in production.');
+    }
     console.log('WARNING test key provided, do not use in production.');
 }
 
