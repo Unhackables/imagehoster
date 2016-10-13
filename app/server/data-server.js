@@ -11,7 +11,7 @@ const requestPerHour = new RateLimit({duration: ms.hour, max: downloadIpLimit.re
 
 const router = require('koa-router')()
 
-router.get('/:hash', function *() {
+router.get('/:hash/:filename?', function *() {
     try {
         const ip = getRemoteIp(this.req)
         if(limit(this, requestPerHour, ip, 'Downloads', 'request')) return

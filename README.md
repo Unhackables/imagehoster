@@ -7,15 +7,28 @@ See also: `./config/index.js`
 ## Example upload
 
 #### Start the server
+
+Enable the TEST key in development mode only.  The examples below are signed using this test key.
+ 
 > export STEEMIT_UPLOAD_TEST_KEY=true
 
 > npm start
 
-#### Download the test image
+#### Usage
 
-> curl -v http://localhost:3234/a190c0596a37398427e51bcbee7c94f1007075629828d62005735c6c2d2ffeef > $HOME/Pictures/blue_red_pill.jpg
+# POST
+curl -v -F "data=@<path_to_file>" http://localhost:3234/<blockchain_username>/<hex(sign(hash256(data)))>
 
-#### Upload again (user `steem` signed using a test key)
+# GET
+curl http://localhost:3234/<hash256(data)>/<[optional_file_name]>
+
+The `optional_file_name` is ignored but should be provided to help users and applications understand the URL.
+
+#### Example Download
+
+> curl -v http://localhost:3234/a190c0596a37398427e51bcbee7c94f1007075629828d62005735c6c2d2ffeef/blue_red_pill.jpg > $HOME/Pictures/blue_red_pill.jpg
+
+#### Example Upload (user `steem` signed using a test key)
 
 > curl -v -F "data=@$HOME/Pictures/blue_red_pill.jpg" http://localhost:3234/steem/205d8bcafb9e0e0897e2db330aa2bd1ca4f7764ad9b1ba04a2a9651453aee72f4a685bd631ad60111f8018fd65d3fc7e951c0039476c270e859bb6760836dcb40d
 
