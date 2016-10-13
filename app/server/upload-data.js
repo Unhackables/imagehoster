@@ -37,7 +37,7 @@ const requestDataRateLimits = [
     new RateLimit({duration: ms.week, max: uploadDataLimit.megsPerWeek}),
 ]
 
-router.post('/:type/:username/:signature', koaBody, function *() {
+router.post('/:username/:signature', koaBody, function *() {
     try {
         const ip = getRemoteIp(this.req)
         if(limit(this, requestIpRateLimits, ip, 'Uploads', 'request')) return
@@ -45,18 +45,10 @@ router.post('/:type/:username/:signature', koaBody, function *() {
         const {files, fields} = this.request.body
 
         if(missing(this, files, 'data')) return
-        if(missing(this, this.params, 'type')) return
         if(missing(this, this.params, 'username')) return
         if(missing(this, this.params, 'signature')) return
 
         // const {username} = fields
-        const {type} = this.params
-        if(type !== 'image') {
-            this.status = 404
-            this.statusText = `Unsupported type ${type}.  Try using 'image'` 
-            this.body = {error: this.statusText}
-            return
-        }
         
         const {signature} = this.params
         const sig = parseSig(signature)
@@ -127,7 +119,7 @@ router.post('/:type/:username/:signature', koaBody, function *() {
                     return
                 }
 
-                const key = `${type}/${sha.toString('hex')}`
+                const key = sha.toString('hex')
                 const params = {Bucket: amazonBucket, Key: key, Body: dataBuffer};
                 s3.putObject(params, (err, data) => {
                     if(err) {

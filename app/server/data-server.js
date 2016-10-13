@@ -11,16 +11,15 @@ const requestPerHour = new RateLimit({duration: ms.hour, max: downloadIpLimit.re
 
 const router = require('koa-router')()
 
-router.get('/:type/:hash', function *() {
+router.get('/:hash', function *() {
     try {
         const ip = getRemoteIp(this.req)
         if(limit(this, requestPerHour, ip, 'Downloads', 'request')) return
 
-        if(missing(this, this.params, 'type')) return
         if(missing(this, this.params, 'hash')) return
 
-        const {type, hash} = this.params
-        const key = `${type}/${hash}`
+        const {hash} = this.params
+        const key = `${hash}`
 
         yield new Promise(resolve => {
             const params = {Bucket: amazonBucket, Key: key};
