@@ -6,7 +6,6 @@ import {missing, getRemoteIp, limit} from 'app/server/utils-koa'
 const {amazonBucket} = config
 const {downloadIpLimit} = config
 
-const hour = 60 * 60 * 1000
 const requestPerHour = new RateLimit({duration: ms.hour, max: downloadIpLimit.requestPerHour})
 
 const router = require('koa-router')()
@@ -26,7 +25,7 @@ router.get('/:hash/:filename?', function *() {
             s3.getObject(params, (err, data) => {
                 if(err) {
                     console.log(err)
-                    this.status = 404
+                    this.status = 400
                     this.statusText = `Error fetching ${key}.` 
                     resolve()
                     return

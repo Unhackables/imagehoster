@@ -13,6 +13,7 @@
     "aws-sdk": "^2.6.5",
     "koa": "^1.2.4",
     "koa-body": "^1.5.0",
+    "koa-cors": "0.0.16",
     "koa-router": "^5.4.0"
   },
   "devDependencies": {

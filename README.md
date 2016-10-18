@@ -17,10 +17,14 @@ Enable the TEST key in development mode only.  The examples below are signed usi
 #### Usage
 
 # POST
-curl -v -F "data=@<path_to_file>" http://localhost:3234/<blockchain_username>/<hex(sign(hash256(data)))>
+
+let d = blockchain_username's posting_private_key
+
+> curl -v -F "data=@<path_to_file>" http://localhost:3234/<blockchain_username>/<hex(sign(hash256(data), d))>
 
 # GET
-curl http://localhost:3234/<hash256(data)>/<[optional_file_name]>
+
+> curl http://localhost:3234/<hash256(data)>/<[optional_file_name]>
 
 The `optional_file_name` is ignored but should be provided to help users and applications understand the URL.
 

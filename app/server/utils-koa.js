@@ -1,8 +1,8 @@
 
-export function missing(ctx, fields, name) {
+export function missing(ctx, fields, name, errorText = name) {
     if(!fields || !fields[name]) {
-        ctx.status = 404
-        ctx.statusText = `Required field: ${name}`
+        ctx.status = 400
+        ctx.statusText = `Missing: ${errorText}`
         ctx.body = {error: ctx.statusText}
         return true
     }
@@ -54,7 +54,7 @@ export function limit(ctx, limits, key, description, unitLabel, amount = 1) {
         })
     } catch(error) {
         if(typeof error === 'string') { 
-            ctx.status = 404
+            ctx.status = 400
             ctx.statusText = error
             ctx.body = {error: ctx.statusText}
             return true

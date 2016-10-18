@@ -44,16 +44,17 @@ router.post('/:username/:signature', koaBody, function *() {
 
         const {files, fields} = this.request.body
 
-        if(missing(this, files, 'data')) return
+        const fileNames = Object.keys(files)
+        if(missing(this, files, fileNames.length ? fileNames[0] : 'file')) return
         if(missing(this, this.params, 'username')) return
         if(missing(this, this.params, 'signature')) return
 
-        // const {username} = fields
+        const file = files[fileNames[0]]
         
         const {signature} = this.params
         const sig = parseSig(signature)
         if(!sig) {
-            this.status = 404
+            this.status = 400
             this.statusText = `Unable to parse signature (expecting HEX data).` 
             this.body = {error: this.statusText}
             return
@@ -62,7 +63,7 @@ router.post('/:username/:signature', koaBody, function *() {
         const {username} = this.params
         const [account] = yield Apis.db_api('get_accounts', [this.params.username])
         if(!account) {
-            this.status = 404
+            this.status = 400
             this.statusText = `Account '${this.params.username}' is not found on the blockchain.` 
             this.body = {error: this.statusText}
             return
@@ -71,7 +72,7 @@ router.post('/:username/:signature', koaBody, function *() {
 
         const rep = repLog10(reputation)
         if(rep < config.uploadIpLimit.minRep) {
-            this.status = 404
+            this.status = 400
             this.statusText = `Your reputation must be at least ${config.uploadIpLimit.minRep} to upload.` 
             this.body = {error: this.statusText}
             console.log(`Upload by '${username}' blocked: reputation ${rep} < ${config.uploadIpLimit.minRep}`);
@@ -80,7 +81,7 @@ router.post('/:username/:signature', koaBody, function *() {
 
         const [[posting_pubkey, weight]] = key_auths
         if(weight < weight_threshold) {
-            this.status = 404
+            this.status = 400
             this.statusText = `User ${username} has an unsupported posting key configuration.` 
             this.body = {error: this.statusText}
             return
@@ -91,16 +92,16 @@ router.post('/:username/:signature', koaBody, function *() {
         // How can I keep a multipart form upload in memory (skip the file)?
         // https://github.com/tunnckoCore/koa-better-body/issues/67
         yield new Promise(resolve => {
-            fs.readFile(files.data.path, 'binary', (err, data) => {
+            fs.readFile(file.path, 'binary', (err, data) => {
                 if(err) {
                     console.error(err)
-                    this.status = 404
+                    this.status = 400
                     this.statusText = `Upload failed.` 
                     this.body = {error: this.statusText}
                     resolve()
                     return
                 }
-                fs.unlink(files.data.path)
+                fs.unlink(file.path)
 
                 const megs = data.length / (1024 * 1024)
                 if(limit(this, requestDataRateLimits, username, 'Upload size', 'megabytes', megs)) {
@@ -112,7 +113,7 @@ router.post('/:username/:signature', koaBody, function *() {
 
                 const sha = hash.sha256(dataBuffer)
                 if(!sig.verifyHash(sha, posting) && !(testKey && sig.verifyHash(sha, testKey))) {
-                    this.status = 404
+                    this.status = 400
                     this.statusText = `Signature did not verify.`
                     this.body = {error: this.statusText}
                     resolve()
@@ -124,15 +125,15 @@ router.post('/:username/:signature', koaBody, function *() {
                 s3.putObject(params, (err, data) => {
                     if(err) {
                         console.log(err)
-                        this.status = 404
+                        this.status = 400
                         this.statusText = `Error uploading ${key}.` 
                         this.body = {error: this.statusText}
                         resolve()
                         return
                     }
                     console.log(`Uploaded s3://${amazonBucket}/${key}`);
-                    const url = `${protocol}://${host}:${port}/${key}`
-                    this.body = {files: [{url}]}
+                    const url = `${protocol}://${host}:${port}/${key}/${file.name}`
+                    this.body = {url}
                     resolve()
                 })
             })
