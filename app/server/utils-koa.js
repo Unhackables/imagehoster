@@ -47,11 +47,11 @@ function esc(value, max_length = 256) {
 
 import tarantool from 'app/server/tarantool'
 
+/** RAM RateLimit.js was removed in commit: 26e7cc19e2eef6063764d211493f9616448c025b
+*/
 export function* limit(ctx, type, key, description, unitLabel, amount = 1) {
-    // console.log('tarantool', yield tarantool())
     try {
         const [[{over, desc}]] = yield tarantool.call('limit', type, key, description, unitLabel, amount)
-        console.log('res', over, desc)
         if(over) throw desc
     } catch(error) {
         console.error(error)
