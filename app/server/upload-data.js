@@ -2,7 +2,6 @@
 import AWS from 'aws-sdk'
 import config from 'config'
 import Apis from 'shared/api_client/ApiInstances'
-import RateLimit, {ms} from 'app/server/RateLimit'
 
 import fs from 'fs'
 import {repLog10} from 'app/server/utils'
@@ -24,22 +23,9 @@ const koaBody = require('koa-body')({
     // formidable: { uploadDir: '/tmp', }
 })
 
-const requestIpRateLimits = [
-    new RateLimit({duration: ms.minute, max: uploadIpLimit.requestPerMinute}),
-    new RateLimit({duration: ms.hour, max: uploadIpLimit.requestPerHour}),
-    new RateLimit({duration: ms.day, max: uploadIpLimit.requestPerDay}),
-]
-
-const requestDataRateLimits = [
-    new RateLimit({duration: ms.minute, max: uploadDataLimit.megsPerMinute}),
-    new RateLimit({duration: ms.hour, max: uploadDataLimit.megsPerHour}),
-    new RateLimit({duration: ms.day, max: uploadDataLimit.megsPerDay}),
-    new RateLimit({duration: ms.week, max: uploadDataLimit.megsPerWeek}),
-]
-
 router.post('/:username/:signature', koaBody, function *() {
     const ip = getRemoteIp(this.req)
-    if(limit(this, requestIpRateLimits, ip, 'Uploads', 'request')) return
+    if(yield limit(this, 'uploadIp', ip, 'Uploads', 'request')) return
 
     if(missing(this, this.params, 'username')) return
     if(missing(this, this.params, 'signature')) return
@@ -120,7 +106,7 @@ router.post('/:username/:signature', koaBody, function *() {
     }
 
     const megs = fbuffer.length / (1024 * 1024)
-    if(limit(this, requestDataRateLimits, username, 'Upload size', 'megabytes', megs)) {
+    if(yield limit(this, 'uploadData', username, 'Upload size', 'megabytes', megs)) {
         return
     }
 

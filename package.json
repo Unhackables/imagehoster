@@ -14,7 +14,8 @@
     "koa": "^1.2.4",
     "koa-body": "^1.5.0",
     "koa-cors": "0.0.16",
-    "koa-router": "^5.4.0"
+    "koa-router": "^5.4.0",
+    "tarantool-driver": "^2.0.1"
   },
   "devDependencies": {
     "babel-cli": "^6.16.0",

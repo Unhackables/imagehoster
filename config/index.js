@@ -10,24 +10,17 @@ const config = {
     protocol: process.env.STEEMIT_UPLOAD_HTTP_PROTOCOL || 'http',
     host: process.env.STEEMIT_UPLOAD_HTTP_HOST || 'localhost',
     port: process.env.STEEMIT_UPLOAD_HTTP_PORT || 3234,
+    tarantool: {
+        host: process.env.STEEMIT_TARANTOOL_HOST || 'localhost',
+        port: process.env.STEEMIT_TARANTOOL_PORT || 3301,
+        username: process.env.STEEMIT_TARANTOOL_USERNAME || 'guest',
+        password: process.env.STEEMIT_TARANTOOL_PASSWORD || '',
+    },
     amazonBucket: process.env.STEEMIT_UPLOAD_AMAZON_BUCKET || "steem-upload-manager-test",
     testKey: toBoolean(process.env.STEEMIT_UPLOAD_TEST_KEY),
     uploadIpLimit: {
         minRep: parseFloat(process.env.STEEMIT_UPLOAD_MIN_REP || 10),
-        requestPerMinute: parseFloat(process.env.STEEMIT_UPLOAD_REQ_PER_MINUTE || 60),
-        requestPerHour: parseFloat(process.env.STEEMIT_UPLOAD_REQ_PER_HOUR || 70),
-        requestPerDay: parseFloat(process.env.STEEMIT_UPLOAD_REQ_PER_DAY || 80),
     },
-    uploadDataLimit: {
-        megsPerMinute: parseFloat(process.env.STEEMIT_UPLOAD_MEGS_PER_MINUTE || 200),
-        megsPerHour: parseFloat(process.env.STEEMIT_UPLOAD_MEGS_PER_HOUR || 200),
-        megsPerDay: parseFloat(process.env.STEEMIT_UPLOAD_MEGS_PER_DAY || 300),
-        megsPerWeek: parseFloat(process.env.STEEMIT_UPLOAD_MEGS_PER_WEEK || 300),
-    },
-    downloadIpLimit: {
-        requestPerHour: parseFloat(process.env.STEEMIT_DOWNLOAD_REQ_PER_HOUR || 3600),
-    },
-
 }
 if(!AWS.config.accessKeyId) throw new Error('Missing STEEMIT_UPLOAD_AWS_KEY_ID')
 if(!AWS.config.secretAccessKey) throw new Error('Missing STEEMIT_UPLOAD_AWS_SECRET_KEY')

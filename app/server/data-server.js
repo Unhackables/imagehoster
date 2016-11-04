@@ -1,4 +1,3 @@
-import RateLimit, {ms} from './RateLimit'
 import config from 'config'
 import s3 from 'app/server/amazon-bucket'
 import {missing, getRemoteIp, limit} from 'app/server/utils-koa'
@@ -6,14 +5,12 @@ import {missing, getRemoteIp, limit} from 'app/server/utils-koa'
 const {amazonBucket} = config
 const {downloadIpLimit} = config
 
-const requestPerHour = new RateLimit({duration: ms.hour, max: downloadIpLimit.requestPerHour})
-
 const router = require('koa-router')()
 
 router.get('/:hash/:filename?', function *() {
     try {
         const ip = getRemoteIp(this.req)
-        if(limit(this, requestPerHour, ip, 'Downloads', 'request')) return
+        if(yield limit(this, 'downloadIp', ip, 'Downloads', 'request')) return
 
         if(missing(this, this.params, 'hash')) return
 

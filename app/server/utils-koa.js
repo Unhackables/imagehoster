@@ -45,21 +45,22 @@ function esc(value, max_length = 256) {
     return res.length < max_length ? res : '-';
 }
 
-export function limit(ctx, limits, key, description, unitLabel, amount = 1) {
-    const limitArray = Array.isArray(limits) ? limits : [limits]
+import tarantool from 'app/server/tarantool'
+
+export function* limit(ctx, type, key, description, unitLabel, amount = 1) {
+    // console.log('tarantool', yield tarantool())
     try {
-        limitArray.forEach(limit => {
-            const {over, desc} = limit.over(key, amount, description, unitLabel)
-            if(over) throw desc
-        })
+        const [[{over, desc}]] = yield tarantool.call('limit', type, key, description, unitLabel, amount)
+        console.log('res', over, desc)
+        if(over) throw desc
     } catch(error) {
+        console.error(error)
         if(typeof error === 'string') { 
             ctx.status = 400
             ctx.statusText = error
             ctx.body = {error: ctx.statusText}
             return true
         }
-        console.error(error)
     }
     return false
 }
