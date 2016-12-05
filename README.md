@@ -28,13 +28,13 @@ Tarantool database should be available on port 3401 of your local host.
 
 # GET
 
-> curl http://localhost:3234/<hash256(data)>/<[optional_file_name]>
+> curl -L http://localhost:3234/<hash256(data)>/<[optional_file_name]>
 
 The `optional_file_name` is ignored but should be provided to help users and applications understand the URL.
 
 #### Example Download
 
-> curl -v http://localhost:3234/a190c0596a37398427e51bcbee7c94f1007075629828d62005735c6c2d2ffeef/blue_red_pill.jpg > $HOME/Pictures/blue_red_pill.jpg
+> curl -Lv http://localhost:3234/a190c0596a37398427e51bcbee7c94f1007075629828d62005735c6c2d2ffeef/blue_red_pill.jpg > $HOME/Pictures/blue_red_pill.jpg
 
 #### Example Upload (user `steem` signed using a test key)
 
