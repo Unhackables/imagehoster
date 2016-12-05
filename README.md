@@ -11,14 +11,18 @@ See also: `./config/index.js`
 Enable the TEST key in development mode only.  The examples below are signed using this test key.
  
 > export STEEMIT_UPLOAD_TEST_KEY=true
-
+> . ./env_prod.sh
 > npm start
+
+#### Quota Server
+
+Tarantool database should be available on port 3401 of your local host.
+
+> tarantool ./app.lua
 
 #### Usage
 
 # POST
-
-let d = blockchain_username's posting_private_key
 
 > curl -v -F "data=@<path_to_file>" http://localhost:3234/<blockchain_username>/<hex(sign(hash256(data), d))>
 
@@ -42,7 +46,7 @@ The `optional_file_name` is ignored but should be provided to help users and app
 import {PrivateKey, Signature} from 'shared/ecc'
 
 const bufSha = new Buffer('a190c0596a37398427e51bcbee7c94f1007075629828d62005735c6c2d2ffeef', 'hex')
-const d = PrivateKey.fromSeed('')
+const d = PrivateKey.fromSeed('') // blockchain_username's posting_private_key
 const sig = Signature.signBufferSha256(bufSha, d)
 console.log('Signature', sig.toHex())
 ```

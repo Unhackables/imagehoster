@@ -12,7 +12,7 @@ const config = {
     port: process.env.STEEMIT_UPLOAD_HTTP_PORT || 3234,
     tarantool: {
         host: process.env.STEEMIT_TARANTOOL_HOST || 'localhost',
-        port: process.env.STEEMIT_TARANTOOL_PORT || 3301,
+        port: process.env.STEEMIT_TARANTOOL_PORT || 3401,
         username: process.env.STEEMIT_TARANTOOL_USERNAME || 'guest',
         password: process.env.STEEMIT_TARANTOOL_PASSWORD || '',
     },
