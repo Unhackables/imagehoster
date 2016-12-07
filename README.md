@@ -34,7 +34,7 @@ The `optional_file_name` is ignored but should be provided to help users and app
 
 #### Example Download
 
-> curl -Lv http://localhost:3234/a190c0596a37398427e51bcbee7c94f1007075629828d62005735c6c2d2ffeef/blue_red_pill.jpg > $HOME/Pictures/blue_red_pill.jpg
+> curl -L http://localhost:3234/QmXJShecaM2pvkcax4Lt6h3Q6wBn1ZhESB6dFkfwSPLuN4/blue_red_pill.jpg > $HOME/Pictures/blue_red_pill.jpg
 
 #### Example Upload (user `steem` signed using a test key)
 

@@ -4,6 +4,7 @@ import config from 'config'
 import Apis from 'shared/api_client/ApiInstances'
 
 import fs from 'fs'
+import IPFS from 'ipfs'
 import {repLog10} from 'app/server/utils'
 import {missing, getRemoteIp, limit} from 'app/server/utils-koa'
 import {hash, Signature, PublicKey, PrivateKey} from 'shared/ecc'
@@ -111,7 +112,6 @@ router.post('/:username/:signature', koaBody, function *() {
     }
 
     const sha = hash.sha256(fbuffer)
-
     if(!sig.verifyHash(sha, posting) && !(testKey && sig.verifyHash(sha, testKey))) {
         this.status = 400
         this.statusText = `Signature did not verify.`
@@ -119,7 +119,13 @@ router.post('/:username/:signature', koaBody, function *() {
         return
     }
 
-    const key = sha.toString('hex')
+    const key = yield new Promise(resolve => {
+        const node = new IPFS()
+        node.files.add({path: 'path', content: fbuffer}, (err, res) => {
+            resolve(res[0].hash)
+        })
+    })
+
     const params = {Bucket: amazonBucket, Key: key, Body: fbuffer};
     yield new Promise(resolve => {
         s3.putObject(params, (err, data) => {
