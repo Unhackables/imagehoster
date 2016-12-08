@@ -16,6 +16,7 @@
     "bytebuffer": "^5.0.0",
     "crypto-js": "^3.1.5",
     "ecurve": "^1.0.2",
+    "file-type": "^3.9.0",
     "immutable": "^3.8.1",
     "ipfs": "^0.20.1",
     "koa": "^1.2.4",

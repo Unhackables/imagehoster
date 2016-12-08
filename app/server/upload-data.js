@@ -8,6 +8,7 @@ import IPFS from 'ipfs'
 import {repLog10} from 'app/server/utils'
 import {missing, getRemoteIp, limit} from 'app/server/utils-koa'
 import {hash, Signature, PublicKey, PrivateKey} from 'shared/ecc'
+import fileType from 'file-type'
 
 const testKey = config.testKey ? PrivateKey.fromSeed('').toPublicKey() : null
 
@@ -106,6 +107,27 @@ router.post('/:username/:signature', koaBody, function *() {
         fbuffer = new Buffer(filebase64, 'base64')
     }
 
+    let mime
+    if(/\.svg$/i.test(fname)) {
+        mime = 'image/svg+xml'
+    } else {
+        const ftype = fileType(fbuffer)
+        if(ftype) {
+            mime = ftype.mime
+            if(fname === '' || fname === 'blob') {
+                fname = `image.${ftype.ext}`
+            }
+        }
+    }
+
+    if(!/^image\//.test(mime)) {
+        this.status = 400
+        this.statusText = `Please upload only images.`
+        this.body = {error: this.statusText}
+        console.log(`Upload rejected, file: ${fname} mime: ${mime}`);
+        return
+    }
+
     const megs = fbuffer.length / (1024 * 1024)
     if(yield limit(this, 'uploadData', username, 'Upload size', 'megabytes', megs)) {
         return
@@ -127,6 +149,9 @@ router.post('/:username/:signature', koaBody, function *() {
     })
 
     const params = {Bucket: amazonBucket, Key: key, Body: fbuffer};
+    if(mime) {
+        params.ContentType = mime
+    }
     yield new Promise(resolve => {
         s3.putObject(params, (err, data) => {
             if(err) {
