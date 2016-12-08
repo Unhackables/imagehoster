@@ -16,7 +16,7 @@ const config = {
         username: process.env.STEEMIT_TARANTOOL_USERNAME || 'guest',
         password: process.env.STEEMIT_TARANTOOL_PASSWORD || '',
     },
-    amazonBucket: process.env.STEEMIT_UPLOAD_AMAZON_BUCKET || "steem-upload-manager-test",
+    amazonBucket: process.env.STEEMIT_UPLOAD_AMAZON_BUCKET || "steem-imagehoster",
     testKey: toBoolean(process.env.STEEMIT_UPLOAD_TEST_KEY),
     uploadIpLimit: {
         minRep: parseFloat(process.env.STEEMIT_UPLOAD_MIN_REP || 10),
