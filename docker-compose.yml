@@ -1,0 +1,22 @@
+version: '2'
+
+services:
+
+  datastore:
+    image: datastore
+    build:
+      context: .
+      dockerfile: Dockerfile-datastore
+    ports:
+      - "3301:3301"
+    volumes:
+      - ./data:/var/lib/tarantool
+      - ./:/home/src
+
+  imagehoster:
+    image: imagehoster
+    build:
+      context: .
+      dockerfile: Dockerfile-imagehoster
+    ports:
+      - "80"
