@@ -28,7 +28,7 @@ Tarantool database should be available on port 3401 of your local host.
 
 # GET
 
-> curl -L http://localhost:3234/<hash256(data)>/<[optional_file_name]>
+> curl -L http://localhost:3234/<ipfsHash(data)>/<[optional_file_name]>
 
 The `optional_file_name` is ignored but should be provided to help users and applications understand the URL.
 
