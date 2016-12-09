@@ -163,7 +163,8 @@ router.post('/:username/:signature', koaBody, function *() {
                 return
             }
             console.log(`Uploaded '${fname}' to s3://${amazonBucket}/${key}`);
-            const url = `${protocol}://${host}:${port}/${key}/${fname}`
+            const fnameUri = encodeURIComponent(fname)
+            const url = `${protocol}://${host}:${port}/${key}/${fnameUri}`
             this.body = {url}
             resolve()
         })
