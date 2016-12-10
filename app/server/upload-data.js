@@ -5,6 +5,7 @@ import Apis from 'shared/api_client/ApiInstances'
 
 import fs from 'fs'
 import IPFS from 'ipfs'
+import isSvg from 'is-svg'
 import {repLog10} from 'app/server/utils'
 import {missing, getRemoteIp, limit} from 'app/server/utils-koa'
 import {hash, Signature, PublicKey, PrivateKey} from 'shared/ecc'
@@ -108,18 +109,19 @@ router.post('/:username/:signature', koaBody, function *() {
     }
 
     let mime
-    if(/\.svg$/i.test(fname)) {
-        mime = 'image/svg+xml'
-    } else {
-        const ftype = fileType(fbuffer)
-        if(ftype) {
-            mime = ftype.mime
-            if(fname === '' || fname === 'blob') {
-                fname = `image.${ftype.ext}`
-            }
+    const ftype = fileType(fbuffer)
+    if(ftype) {
+        mime = ftype.mime
+        if(!fname || fname === '' || fname === 'blob') {
+            fname = `image.${ftype.ext}`
         }
     }
-
+    if(!mime && isSvg(fbuffer)) {
+        mime = 'image/svg+xml'
+        if(!fname || fname === '' || fname === 'blob') {
+            fname = `image.svg`
+        }
+    }
     if(!/^image\//.test(mime)) {
         this.status = 400
         this.statusText = `Please upload only images.`
