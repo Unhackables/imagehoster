@@ -2,11 +2,10 @@ version: '2'
 
 services:
 
-  datastore:
-    image: datastore
+  ttdatastore:
+    image: ttdatastore
     build:
-      context: .
-      dockerfile: Dockerfile-datastore
+      context: ./ttdatastore
     ports:
       - "3301:3301"
     volumes:
@@ -16,8 +15,7 @@ services:
   imagehoster:
     image: imagehoster
     build:
-      context: .
-      dockerfile: Dockerfile-imagehoster
+      context: ./imagehoster
     ports:
       - "80"
     environment:
