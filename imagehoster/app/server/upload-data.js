@@ -116,13 +116,15 @@ router.post('/:username/:signature', koaBody, function *() {
             fname = `image.${ftype.ext}`
         }
     }
+
     if((!mime && isSvg(fbuffer) || /image\/svg/i.test(mime) || /\.svgz?$/i.test(fname)) {
         this.status = 400
         this.statusText = `Scalable vector graphic (svg) images are not supported.`
         this.body = {error: this.statusText}
         return
     }
-    if(!/^image\//.test(mime)) {
+
+    if(!/^image\/(gif|jpeg|png)$/.test(mime)) {
         this.status = 400
         this.statusText = `Please upload only images.`
         this.body = {error: this.statusText}
