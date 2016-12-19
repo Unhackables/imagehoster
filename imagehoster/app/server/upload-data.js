@@ -5,7 +5,6 @@ import Apis from 'shared/api_client/ApiInstances'
 
 import fs from 'fs'
 import IPFS from 'ipfs'
-import isSvg from 'is-svg'
 import {repLog10} from 'app/server/utils'
 import {missing, getRemoteIp, limit} from 'app/server/utils-koa'
 import {hash, Signature, PublicKey, PrivateKey} from 'shared/ecc'
@@ -115,13 +114,6 @@ router.post('/:username/:signature', koaBody, function *() {
         if(!fname || fname === '' || fname === 'blob') {
             fname = `image.${ftype.ext}`
         }
-    }
-
-    if((!mime && isSvg(fbuffer) || /image\/svg/i.test(mime) || /\.svgz?$/i.test(fname)) {
-        this.status = 400
-        this.statusText = `Scalable vector graphic (svg) images are not supported.`
-        this.body = {error: this.statusText}
-        return
     }
 
     if(!/^image\/(gif|jpeg|png)$/.test(mime)) {
