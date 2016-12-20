@@ -9,6 +9,7 @@ import {repLog10} from 'app/server/utils'
 import {missing, getRemoteIp, limit} from 'app/server/utils-koa'
 import {hash, Signature, PublicKey, PrivateKey} from 'shared/ecc'
 import fileType from 'file-type'
+import exif from 'app/server/exif'
 
 const testKey = config.testKey ? PrivateKey.fromSeed('').toPublicKey() : null
 
@@ -135,6 +136,12 @@ router.post('/:username/:signature', koaBody, function *() {
         this.statusText = `Signature did not verify.`
         this.body = {error: this.statusText}
         return
+    }
+
+    if(mime === 'image/jpeg') {
+        // For privacy, remove: GPS Information, Camera Info, etc.. 
+        // Must verify signature before altering fbuffer
+        fbuffer = exif.remove(fbuffer);
     }
 
     const key = yield new Promise(resolve => {
