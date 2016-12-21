@@ -9,6 +9,12 @@
     @return {Buffer} image/jpeg
 */
 function remove(imageArrayBuffer) {
+    if(!Buffer.isBuffer(imageArrayBuffer))
+        throw new TypeError('Expecting Buffer for parameter: imageArrayBuffer')
+
+    if(!imageArrayBuffer.buffer)
+        throw new TypeError('Expecting Buffer to contain ArrayBuffer property: imageArrayBuffer.buffer (check node version)')
+    
     // forked from: https://github.com/mshibl/Exif-Stripper/blob/master/exif-stripper.js
     const pieces = [];
     const dv = new DataView(imageArrayBuffer.buffer);

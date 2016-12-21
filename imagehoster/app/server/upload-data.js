@@ -141,7 +141,11 @@ router.post('/:username/:signature', koaBody, function *() {
     if(mime === 'image/jpeg') {
         // For privacy, remove: GPS Information, Camera Info, etc.. 
         // Must verify signature before altering fbuffer
-        fbuffer = exif.remove(fbuffer);
+        try {
+            fbuffer = exif.remove(fbuffer);
+        } catch(error) {
+            console.error(error);
+        }
     }
 
     const key = yield new Promise(resolve => {
