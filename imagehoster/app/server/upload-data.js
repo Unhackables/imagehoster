@@ -144,7 +144,12 @@ router.post('/:username/:signature', koaBody, function *() {
         // For privacy, remove: GPS Information, Camera Info, etc.. 
         // Must verify signature before altering fbuffer
         try {
-            fbuffer = exif.remove(fbuffer);
+            const fclean = exif.remove(fbuffer);
+            if(fclean) {
+                fbuffer = fclean
+            } else {
+                console.error('Exif filter failure', key);
+            }
         } catch(error) {
             console.error(error);
         }

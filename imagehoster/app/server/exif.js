@@ -21,6 +21,7 @@ function remove(imageArrayBuffer) {
     let offset = 0, recess = 0;
     let i = 0;
 
+    // jpeg magic bytes 0xffd8
     if (dv.getUint16(offset) == 0xffd8){
         offset += 2;
         let app1 = dv.getUint16(offset);
