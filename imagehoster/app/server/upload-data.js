@@ -4,12 +4,13 @@ import config from 'config'
 import Apis from 'shared/api_client/ApiInstances'
 
 import fs from 'fs'
-import IPFS from 'ipfs'
 import {repLog10} from 'app/server/utils'
 import {missing, getRemoteIp, limit} from 'app/server/utils-koa'
 import {hash, Signature, PublicKey, PrivateKey} from 'shared/ecc'
 import fileType from 'file-type'
 import exif from 'app/server/exif'
+import multihash from 'multihashes'
+import base58 from 'bs58'
 
 const testKey = config.testKey ? PrivateKey.fromSeed('').toPublicKey() : null
 
@@ -138,6 +139,7 @@ router.post('/:username/:signature', koaBody, function *() {
         return
     }
 
+    const key = base58.encode(multihash.encode(sha, 'sha2-256'))
     if(mime === 'image/jpeg') {
         // For privacy, remove: GPS Information, Camera Info, etc.. 
         // Must verify signature before altering fbuffer
@@ -148,17 +150,11 @@ router.post('/:username/:signature', koaBody, function *() {
         }
     }
 
-    const key = yield new Promise(resolve => {
-        const node = new IPFS()
-        node.files.add({path: 'path', content: fbuffer}, (err, res) => {
-            resolve(res[0].hash)
-        })
-    })
-
     const params = {Bucket: amazonBucket, Key: key, Body: fbuffer};
     if(mime) {
         params.ContentType = mime
     }
+
     yield new Promise(resolve => {
         s3.putObject(params, (err, data) => {
             if(err) {
