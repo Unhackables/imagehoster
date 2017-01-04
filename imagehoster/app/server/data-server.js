@@ -1,8 +1,8 @@
 import config from 'config'
-import s3 from 'app/server/amazon-bucket'
+import {s3} from 'app/server/amazon-bucket'
 import {missing, getRemoteIp, limit} from 'app/server/utils-koa'
 
-const {amazonBucket} = config
+const {uploadBucket} = config
 const {downloadIpLimit} = config
 
 const router = require('koa-router')()
@@ -17,13 +17,13 @@ router.get('/:hash/:filename?', function *() {
         const {hash} = this.params
         const key = `${hash}`
 
-        const params = {Bucket: amazonBucket, Key: key, Expires: 60};
+        const params = {Bucket: uploadBucket, Key: key, Expires: 60};
         const url = s3.getSignedUrl('getObject', params);
         // console.log("get URL is", url);
         this.redirect(url)
         
         // yield new Promise(resolve => {
-        //     const params = {Bucket: amazonBucket, Key: key};
+        //     const params = {Bucket: uploadBucket, Key: key};
         //     s3.getObject(params, (err, data) => {
         //         if(err) {
         //             console.log(err)

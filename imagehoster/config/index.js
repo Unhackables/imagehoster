@@ -2,8 +2,7 @@ import AWS from 'aws-sdk'
 
 const toBoolean = s => s == null || s.trim() === '' ? false : JSON.parse(s)
 
-AWS.config.accessKeyId = process.env.STEEMIT_UPLOAD_AWS_KEY_ID
-AWS.config.secretAccessKey = process.env.STEEMIT_UPLOAD_AWS_SECRET_KEY
+// const {NODE_ENV = 'development'} = process.env
 
 const config = {
     ws_connection_server: process.env.STEEMIT_UPLOAD_STEEMD_WEBSOCKET || 'wss://node.steem.ws',
@@ -16,14 +15,23 @@ const config = {
         username: process.env.STEEMIT_TARANTOOL_USERNAME || 'guest',
         password: process.env.STEEMIT_TARANTOOL_PASSWORD || '',
     },
-    amazonBucket: process.env.STEEMIT_UPLOAD_AMAZON_BUCKET || "steem-imagehoster",
     testKey: toBoolean(process.env.STEEMIT_UPLOAD_TEST_KEY),
     uploadIpLimit: {
         minRep: parseFloat(process.env.STEEMIT_UPLOAD_MIN_REP || 10),
     },
+    
+    uploadBucket: 'steemit-imageproxy-upload',
+    webBucket: 'steemit-imageproxy-web',
+    thumbnailBucket: 'steemit-imageproxy-thumbnail',
 }
-if(!AWS.config.accessKeyId) throw new Error('Missing STEEMIT_UPLOAD_AWS_KEY_ID')
-if(!AWS.config.secretAccessKey) throw new Error('Missing STEEMIT_UPLOAD_AWS_SECRET_KEY')
+
+if(process.env['STEEMIT_IMAGEPROXY_AWS_KEY_ID']) {
+    AWS.config.accessKeyId = process.env['STEEMIT_IMAGEPROXY_AWS_KEY_ID']
+}
+
+if(process.env['STEEMIT_IMAGEPROXY_AWS_SECRET_KEY']) {
+    AWS.config.secretAccessKey = process.env['STEEMIT_IMAGEPROXY_AWS_SECRET_KEY']
+}
 
 if(config.testKey) {
     if(process.env.NODE_ENV === 'production') {

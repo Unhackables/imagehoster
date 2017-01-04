@@ -14,7 +14,7 @@ import base58 from 'bs58'
 
 const testKey = config.testKey ? PrivateKey.fromSeed('').toPublicKey() : null
 
-const {amazonBucket, protocol, host, port} = config
+const {uploadBucket, protocol, host, port} = config
 const {uploadIpLimit, uploadDataLimit} = config
 
 const s3 = new AWS.S3()
@@ -139,7 +139,8 @@ router.post('/:username/:signature', koaBody, function *() {
         return
     }
 
-    const key = base58.encode(multihash.encode(sha, 'sha2-256'))
+    // Data hash (D)
+    const key = 'D' + base58.encode(multihash.encode(sha, 'sha2-256'))
     if(mime === 'image/jpeg') {
         // For privacy, remove: GPS Information, Camera Info, etc.. 
         // Must verify signature before altering fbuffer
@@ -155,7 +156,7 @@ router.post('/:username/:signature', koaBody, function *() {
         }
     }
 
-    const params = {Bucket: amazonBucket, Key: key, Body: fbuffer};
+    const params = {Bucket: uploadBucket, Key: key, Body: fbuffer};
     if(mime) {
         params.ContentType = mime
     }
@@ -170,7 +171,7 @@ router.post('/:username/:signature', koaBody, function *() {
                 resolve()
                 return
             }
-            console.log(`Uploaded '${fname}' to s3://${amazonBucket}/${key}`);
+            console.log(`Uploaded '${fname}' to s3://${uploadBucket}/${key}`);
             const fnameUri = encodeURIComponent(fname)
             const url = `${protocol}://${host}:${port}/${key}/${fnameUri}`
             this.body = {url}

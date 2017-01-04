@@ -9,6 +9,12 @@ export function missing(ctx, fields, name, errorText = name) {
     return false
 }
 
+export function statusError(ctx, code, text) {
+    ctx.status = code
+    ctx.statusText = text
+    ctx.body = {error: this.statusText}
+}
+
 export function getRemoteIp(req) {
     const remote_address = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
     const ip_match = remote_address ? remote_address.match(/(\d+\.\d+\.\d+\.\d+)/) : null;

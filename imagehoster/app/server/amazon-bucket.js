@@ -1,9 +1,34 @@
 
 import AWS from 'aws-sdk'
-import config from 'config'
 
-const {amazonBucket} = config
+export const s3 = new AWS.S3()
 
-const s3 = new AWS.S3()
-// s3.createBucket({Bucket: amazonBucket})
-export default s3
+export function* s3call(method, params) {
+    return yield new Promise((resolve, reject) => {
+        s3[method](params, function(err, data) {
+            if(err && (err.code === 'NotFound' || err.code === 'NoSuchKey')) {
+                resolve(null)
+            } else if (err) {
+                console.error(method, params, err)
+                reject(err)
+            }
+            else resolve(data);
+        });
+    })
+}
+
+/**
+    @arg {string} what = objectExists, ..
+    @arg {object} params = {Bucket, Key}
+*/
+export function* waitFor(method, params, responseHeaders) {
+    return yield new Promise((resolve, reject) => {
+        s3.waitFor(method, params, function(err, data) {
+            if (err) {
+                console.error(err)
+                reject(err)
+            }
+            else resolve(data);
+        });
+    })
+}
