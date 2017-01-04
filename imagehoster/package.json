@@ -23,7 +23,9 @@
     "koa-cors": "0.0.16",
     "koa-router": "^5.4.0",
     "multihashes": "^0.3.1",
+    "request": "^2.79.0",
     "secure-random": "^1.1.1",
+    "sharp": "^0.17.0",
     "tarantool-driver": "^2.0.1",
     "websocket": "^1.0.23"
   },
