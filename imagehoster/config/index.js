@@ -11,7 +11,7 @@ const config = {
     port: process.env.STEEMIT_UPLOAD_HTTP_PORT || 3234,
     tarantool: {
         host: process.env.STEEMIT_TARANTOOL_HOST || 'localhost',
-        port: process.env.STEEMIT_TARANTOOL_PORT || 3401,
+        port: process.env.STEEMIT_TARANTOOL_PORT || 3301,
         username: process.env.STEEMIT_TARANTOOL_USERNAME || 'guest',
         password: process.env.STEEMIT_TARANTOOL_PASSWORD || '',
     },
@@ -20,9 +20,9 @@ const config = {
         minRep: parseFloat(process.env.STEEMIT_UPLOAD_MIN_REP || 10),
     },
     
-    uploadBucket: 'steemit-imageproxy-upload',
-    webBucket: 'steemit-imageproxy-web',
-    thumbnailBucket: 'steemit-imageproxy-thumbnail',
+    uploadBucket: process.env.STEEMIT_IMAGEPROXY_BUCKET_UPLOAD || 'steemit-dev-imageproxy-upload',
+    webBucket: process.env.STEEMIT_IMAGEPROXY_BUCKET_WEB || 'steemit-dev-imageproxy-web',
+    thumbnailBucket: process.env.STEEMIT_IMAGEPROXY_BUCKET_THUMBNAIL || 'steemit-dev-imageproxy-thumbnail',
 }
 
 if(process.env['STEEMIT_IMAGEPROXY_AWS_KEY_ID']) {
