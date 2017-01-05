@@ -67,12 +67,12 @@ function* upload() {
 
         const Body = fs.readFileSync(cacheDir + '/' + fname)
         const ContentType = JSON.parse(fs.readFileSync(cacheDir + '/' + sha1hex + '.json'))['content-type']
-        yield s3call('putObject', Object.assign({}, imageKey, {Body, ContentType}))        
+        yield s3call('putObject', Object.assign({}, imageKey, {Body, ContentType}))
     }
 }
 
-function* s3call(method, params) {
-    return yield new Promise((resolve, reject) => {
+function s3call(method, params) {
+    return new Promise((resolve, reject) => {
         s3[method](params, function(err, data) {
             if(err && (err.code === 'NotFound' || err.code === 'NoSuchKey')) {
                 resolve(null)
@@ -86,6 +86,6 @@ function* s3call(method, params) {
 }
 
 const mhashEncode = (hash, mhashType) => base58.encode(multihash.encode(hash, mhashType))
-const call = iterator => {let ret; do { ret = iterator.next() } while(!ret.done)}
+const call = gen => {let ret; do { ret = gen.next() } while(!ret.done)}
 call(upload())
 

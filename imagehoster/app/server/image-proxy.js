@@ -14,7 +14,7 @@ import request from 'request'
 import sharp from 'sharp'
 
 const {uploadBucket, webBucket, thumbnailBucket} = config
-const TRACE = false
+const TRACE = process.env.STEEMIT_IMAGEPROXY_TRACE || false
 
 const router = require('koa-router')()
 
