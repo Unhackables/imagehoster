@@ -14,7 +14,7 @@ import request from 'request'
 import sharp from 'sharp'
 
 const {uploadBucket, webBucket, thumbnailBucket} = config
-const TRACE = false
+const TRACE = true
 
 const router = require('koa-router')()
 
@@ -104,7 +104,6 @@ router.get('/:width(\\d+)x:height(\\d+)/:url(.*)', function *() {
 
         if(TRACE) console.log('image-proxy -> original save')
         yield s3call('putObject', Object.assign({}, originalKey, imageResult))
-        // yield waitFor('objectExists', originalKey)
 
         try {
             if(TRACE) console.log('image-proxy -> prepare thumbnail')
@@ -112,13 +111,14 @@ router.get('/:width(\\d+)x:height(\\d+)/:url(.*)', function *() {
 
             if(TRACE) console.log('image-proxy -> thumbnail save')
             yield s3call('putObject', Object.assign({}, thumbnailKey, thumbnail))
-            // yield waitFor('objectExists', thumbnailKey)
+            yield waitFor('objectExists', thumbnailKey)
 
             if(TRACE) console.log('image-proxy -> thumbnail redirect')
             const url = s3.getSignedUrl('getObject', thumbnailKey)
             this.redirect(url)
         } catch(error) {
             console.error('image-proxy resize error', this.request.originalUrl, error, error ? error.stack : undefined)
+            yield waitFor('objectExists', originalKey)
             if(TRACE) console.log('image-proxy -> resize error redirect', url)
             const url = s3.getSignedUrl('getObject', originalKey)
             this.redirect(url)
@@ -146,7 +146,7 @@ router.get('/:width(\\d+)x:height(\\d+)/:url(.*)', function *() {
 
     if(TRACE) console.log('image-proxy -> original save')
     yield s3call('putObject', Object.assign({}, originalKey, imageResult))
-    // yield waitFor('objectExists', originalKey)
+    yield waitFor('objectExists', originalKey)
 
     if(TRACE) console.log('image-proxy -> original redirect')
     const signedUrl = s3.getSignedUrl('getObject', originalKey)
