@@ -16,7 +16,7 @@ Enable the TEST key in development mode only.  The examples below are signed usi
 
 #### Quota Server
 
-Tarantool database should be available on port 3401 of your local host.
+Tarantool database should be available on port 3301 of your local host.
 
 > tarantool ./app.lua
 
