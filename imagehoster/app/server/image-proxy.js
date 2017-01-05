@@ -14,7 +14,7 @@ import request from 'request'
 import sharp from 'sharp'
 
 const {uploadBucket, webBucket, thumbnailBucket} = config
-const TRACE = true
+const TRACE = process.env.STEEMIT_IMAGEPROXY_TRACE || false
 
 const router = require('koa-router')()
 
@@ -83,7 +83,6 @@ router.get('/:width(\\d+)x:height(\\d+)/:url(.*)', function *() {
         const thumbnailKey = {Bucket: thumbnailBucket, Key: resizedKey}
 
         if(TRACE) console.log('image-proxy -> has thumbnail')
-        const t = yield s3call('headObject', thumbnailKey)
         const hasThumbnail = (yield s3call('headObject', thumbnailKey)) != null
 
         if(hasThumbnail) {
