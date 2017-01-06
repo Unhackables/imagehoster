@@ -12,7 +12,7 @@ export function missing(ctx, fields, name, errorText = name) {
 export function statusError(ctx, code, text) {
     ctx.status = code
     ctx.statusText = text
-    ctx.body = {error: this.statusText}
+    ctx.body = {error: ctx.statusText}
 }
 
 export function getRemoteIp(req) {
