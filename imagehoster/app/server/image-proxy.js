@@ -76,6 +76,7 @@ router.get('/:width(\\d+)x:height(\\d+)/:url(.*)', function *() {
     const Key = isUpload ? url.match(simpleHashRe)[0] : urlHash(url) // UQm...
     const Bucket = isUpload ? uploadBucket : webBucket
     const originalKey = {Bucket, Key}
+    const webBucketKey = {Bucket: webBucket, Key}
 
     const resizeRequest = targetWidth !== 0
     if(resizeRequest) {
@@ -95,14 +96,14 @@ router.get('/:width(\\d+)x:height(\\d+)/:url(.*)', function *() {
 
         // no thumbnail, fetch and cache
         if(TRACE) console.log('image-proxy -> fetch original')
-        const imageResult = yield fetchImage(Bucket, Key, url)
+        const imageResult = yield fetchImage(Bucket, Key, url, webBucketKey)
         if(!imageResult) {
             statusError(this, 400, 'Bad Request')
             return
         }
 
         if(TRACE) console.log('image-proxy -> original save')
-        yield s3call('putObject', Object.assign({}, originalKey, imageResult))
+        yield s3call('putObject', Object.assign({}, webBucketKey, imageResult))
 
         try {
             if(TRACE) console.log('image-proxy -> prepare thumbnail')
@@ -117,9 +118,9 @@ router.get('/:width(\\d+)x:height(\\d+)/:url(.*)', function *() {
             this.redirect(url)
         } catch(error) {
             console.error('image-proxy resize error', this.request.originalUrl, error, error ? error.stack : undefined)
-            yield waitFor('objectExists', originalKey)
+            yield waitFor('objectExists', webBucketKey)
             if(TRACE) console.log('image-proxy -> resize error redirect', url)
-            const url = s3.getSignedUrl('getObject', originalKey)
+            const url = s3.getSignedUrl('getObject', webBucketKey)
             this.redirect(url)
         }
         return
@@ -137,24 +138,29 @@ router.get('/:width(\\d+)x:height(\\d+)/:url(.*)', function *() {
     }
 
     if(TRACE) console.log('image-proxy -> fetchImage')
-    const imageResult = yield fetchImage(Bucket, Key, url)
+    const imageResult = yield fetchImage(Bucket, Key, url, webBucketKey)
     if(!imageResult) {
         statusError(this, 400, 'Bad Request')
         return
     }
 
     if(TRACE) console.log('image-proxy -> original save')
-    yield s3call('putObject', Object.assign({}, originalKey, imageResult))
-    yield waitFor('objectExists', originalKey)
+    yield s3call('putObject', Object.assign({}, webBucketKey, imageResult))
+    yield waitFor('objectExists', webBucketKey)
 
     if(TRACE) console.log('image-proxy -> original redirect')
-    const signedUrl = s3.getSignedUrl('getObject', originalKey)
+    const signedUrl = s3.getSignedUrl('getObject', webBucketKey)
     this.redirect(signedUrl)
 })
 
 /** @return {object} - null or {Body, ContentType: string} */
-function* fetchImage(Bucket, Key, url) {
-    const img = yield s3call('getObject', {Bucket, Key})
+function* fetchImage(Bucket, Key, url, webBucketKey) {
+    let img = yield s3call('getObject', {Bucket, Key})
+    if(!img && Bucket === uploadBucket) {
+        // The url appeared to be in the Upload bucket but was not,
+        // double-check the webbucket to be sure.
+        img = yield s3call('getObject', webBucketKey)
+    }
     if(img) {
         const {Body, ContentType} = img
         return {Body, ContentType}
@@ -184,7 +190,7 @@ function* fetchImage(Bucket, Key, url) {
             reject({error, response})
         })
     })
-    yield s3call('putObject', Object.assign({}, {Bucket, Key}, imgResult))
+    yield s3call('putObject', Object.assign({}, webBucketKey, imgResult))
     // yield waitFor('objectExists', {Bucket, Key})
     return imgResult
 }
