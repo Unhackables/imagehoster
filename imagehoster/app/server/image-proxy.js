@@ -172,7 +172,7 @@ function* fetchImage(Bucket, Key, url) {
             if (imageBuffer) {
                 const ftype = fileType(imageBuffer)
                 if(!ftype || !/^image\/(gif|jpeg|png)$/.test(ftype.mime)) {
-                    statusError(400, 'Supported image formats are: gif, jpeg, and png')
+                    statusError(this, 400, 'Supported image formats are: gif, jpeg, and png')
                     return
                 }
                 const {mime} = ftype
@@ -180,7 +180,7 @@ function* fetchImage(Bucket, Key, url) {
                 return
             }
             console.error(error);
-            statusError(404, 'Not Found')
+            statusError(this, 404, 'Not Found')
             reject({error, response})
         })
     })
