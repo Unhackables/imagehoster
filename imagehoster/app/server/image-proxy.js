@@ -96,9 +96,8 @@ router.get('/:width(\\d+)x:height(\\d+)/:url(.*)', function *() {
 
         // no thumbnail, fetch and cache
         if(TRACE) console.log('image-proxy -> fetch original')
-        const imageResult = yield fetchImage(Bucket, Key, url, webBucketKey)
+        const imageResult = yield fetchImage(this, Bucket, Key, url, webBucketKey)
         if(!imageResult) {
-            statusError(this, 400, 'Bad Request')
             return
         }
 
@@ -138,9 +137,8 @@ router.get('/:width(\\d+)x:height(\\d+)/:url(.*)', function *() {
     }
 
     if(TRACE) console.log('image-proxy -> fetchImage')
-    const imageResult = yield fetchImage(Bucket, Key, url, webBucketKey)
+    const imageResult = yield fetchImage(this, Bucket, Key, url, webBucketKey)
     if(!imageResult) {
-        statusError(this, 400, 'Bad Request')
         return
     }
 
@@ -154,7 +152,7 @@ router.get('/:width(\\d+)x:height(\\d+)/:url(.*)', function *() {
 })
 
 /** @return {object} - null or {Body, ContentType: string} */
-function* fetchImage(Bucket, Key, url, webBucketKey) {
+function* fetchImage(ctx, Bucket, Key, url, webBucketKey) {
     let img = yield s3call('getObject', {Bucket, Key})
     if(!img && Bucket === uploadBucket) {
         // The url appeared to be in the Upload bucket but was not,
@@ -173,12 +171,13 @@ function* fetchImage(Bucket, Key, url, webBucketKey) {
         rejectUnauthorized: false, // WARNING
         encoding: null
     }
-    const imgResult = yield new Promise((resolve, reject) => {
+    const imgResult = yield new Promise((resolve) => {
         request(opts, (error, response, imageBuffer) => {
             if (imageBuffer) {
                 const ftype = fileType(imageBuffer)
                 if(!ftype || !/^image\/(gif|jpeg|png)$/.test(ftype.mime)) {
-                    statusError(this, 400, 'Supported image formats are: gif, jpeg, and png')
+                    statusError(ctx, 400, 'Supported image formats are: gif, jpeg, and png')
+                    resolve()
                     return
                 }
                 const {mime} = ftype
@@ -186,12 +185,13 @@ function* fetchImage(Bucket, Key, url, webBucketKey) {
                 return
             }
             console.error(error);
-            statusError(this, 404, 'Not Found')
-            reject({error, response})
+            statusError(ctx, 404, 'Not Found')
+            resolve()
         })
     })
-    yield s3call('putObject', Object.assign({}, webBucketKey, imgResult))
-    // yield waitFor('objectExists', {Bucket, Key})
+    if(imgResult) {
+        yield s3call('putObject', Object.assign({}, webBucketKey, imgResult))
+    }
     return imgResult
 }
 
