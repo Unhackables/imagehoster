@@ -54,33 +54,38 @@ router.post('/:username/:signature', koaBody, function *() {
     }
 
     const {username} = this.params
-    const [account] = yield Apis.db_api('get_accounts', [this.params.username])
-    if(!account) {
-        this.status = 400
-        this.statusText = `Account '${this.params.username}' is not found on the blockchain.` 
-        this.body = {error: this.statusText}
-        return
-    }
-    const {posting: {key_auths}, weight_threshold, reputation} = account
+    let posting
+    try {
+        const [account] = yield Apis.db_api('get_accounts', [this.params.username])
+        if(!account) {
+            this.status = 400
+            this.statusText = `Account '${this.params.username}' is not found on the blockchain.` 
+            this.body = {error: this.statusText}
+            return
+        }
+        const {posting: {key_auths}, weight_threshold, reputation} = account
 
-    const rep = repLog10(reputation)
-    if(rep < config.uploadIpLimit.minRep) {
-        this.status = 400
-        this.statusText = `Your reputation must be at least ${config.uploadIpLimit.minRep} to upload.` 
-        this.body = {error: this.statusText}
-        console.log(`Upload by '${username}' blocked: reputation ${rep} < ${config.uploadIpLimit.minRep}`);
-        return
-    }
+        const rep = repLog10(reputation)
+        if(rep < config.uploadIpLimit.minRep) {
+            this.status = 400
+            this.statusText = `Your reputation must be at least ${config.uploadIpLimit.minRep} to upload.` 
+            this.body = {error: this.statusText}
+            console.log(`Upload by '${username}' blocked: reputation ${rep} < ${config.uploadIpLimit.minRep}`);
+            return
+        }
 
-    const [[posting_pubkey, weight]] = key_auths
-    if(weight < weight_threshold) {
-        this.status = 400
-        this.statusText = `User ${username} has an unsupported posting key configuration.` 
-        this.body = {error: this.statusText}
-        return
-    }
+        const [[posting_pubkey, weight]] = key_auths
+        if(weight < weight_threshold) {
+            this.status = 400
+            this.statusText = `User ${username} has an unsupported posting key configuration.` 
+            this.body = {error: this.statusText}
+            return
+        }
 
-    const posting = PublicKey.fromString(posting_pubkey)
+        const posting = PublicKey.fromString(posting_pubkey)
+    } catch(error) {
+        console.error(error);
+    }
 
     let fbuffer, fname
     if(fileNames.length) {
@@ -126,17 +131,27 @@ router.post('/:username/:signature', koaBody, function *() {
         return
     }
 
-    const megs = fbuffer.length / (1024 * 1024)
-    if(yield limit(this, 'uploadData', username, 'Upload size', 'megabytes', megs)) {
-        return
+    const sha = hash.sha256(fbuffer)
+
+    let userVerified = false
+    if(posting) {
+        if(!sig.verifyHash(sha, posting) && !(testKey && sig.verifyHash(sha, testKey))) {
+            this.status = 400
+            this.statusText = `Signature did not verify.`
+            this.body = {error: this.statusText}
+            return
+        }
+        userVerified = true
+    } else {
+        console.log('WARN: Skipped signature verification (steemd connection problem?)');
     }
 
-    const sha = hash.sha256(fbuffer)
-    if(!sig.verifyHash(sha, posting) && !(testKey && sig.verifyHash(sha, testKey))) {
-        this.status = 400
-        this.statusText = `Signature did not verify.`
-        this.body = {error: this.statusText}
-        return
+    if(userVerified) {
+        // don't affect the quote unless the user is verified
+        const megs = fbuffer.length / (1024 * 1024)
+        if(yield limit(this, 'uploadData', username, 'Upload size', 'megabytes', megs)) {
+            return
+        }
     }
 
     // Data hash (D)

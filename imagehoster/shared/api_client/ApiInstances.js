@@ -109,9 +109,11 @@ export default {
             // usage: Apis.db_api("get_state", "/")
             for (const name of apiNames) {
                 this[name.local] = (method, ...args) => {
-                    // Consider console completion (instead of this function).  That involves adding functions for each
-                    // API method name (build time). (Usage: Apis.db_api.get_state("/") )
-                    return apis_instance[name.local].exec(method, toStrings(args))
+                    const inst = apis_instance[name.local]
+                    if(!inst)
+                        throw new Error("Missing API instance (connection problem?): " + name.remote)
+
+                    return inst.exec(method, toStrings(args))
                 }
             }
         }
