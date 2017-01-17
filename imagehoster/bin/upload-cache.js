@@ -69,7 +69,7 @@ function* upload() {
             const ContentType = JSON.parse(fs.readFileSync(cacheDir + '/' + sha1hex + '.json'))['content-type']
             yield s3call('putObject', Object.assign({}, imageKey, {Body, ContentType}))
         } catch(error) {
-            console.error('Error processing' + fname);
+            console.error('Error processing ' + fname);
             console.error(error);
         }
     }
