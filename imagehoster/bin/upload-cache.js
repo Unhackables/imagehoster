@@ -38,36 +38,40 @@ function* upload() {
         // deda3dca887a2048a7cc4818ffeb5e69936f0744.bin
         // deda3dca887a2048a7cc4818ffeb5e69936f0744.json
         // deda3dca887a2048a7cc4818ffeb5e69936f0744.url
+        try {
+            if(fname.length < 38) continue
 
-        if(fname.length < 38) continue
+            const [name, ext] = fname.split('.')
+            if(ext !== 'bin') continue
 
-        const [name, ext] = fname.split('.')
-        if(ext !== 'bin') continue
+            const sha1hex = name.substring(0, 40)
+            const dimension = dimRe.test(name) && name.match(dimRe)[0]
+            
+            const Key = 'U' +
+                mhashEncode(new Buffer(sha1hex, 'hex'), 'sha1') +
+                (dimension ? '_' + dimension : '')
 
-        const sha1hex = name.substring(0, 40)
-        const dimension = dimRe.test(name) && name.match(dimRe)[0]
-        
-        const Key = 'U' +
-            mhashEncode(new Buffer(sha1hex, 'hex'), 'sha1') +
-            (dimension ? '_' + dimension : '')
+            const Bucket = dimension ? thumbnailBucket : webBucket
+            const imageKey = {Key, Bucket}
 
-        const Bucket = dimension ? thumbnailBucket : webBucket
-        const imageKey = {Key, Bucket}
-
-        if(rerun) {
-            // skip when exists (only if they sequentially exist)
-            rerun = !!(yield s3call('headObject', imageKey))
             if(rerun) {
-                console.log('upload-cache -> already uploaded', JSON.stringify(imageKey, null, 0))
-                continue
+                // skip when exists (only if they sequentially exist)
+                rerun = !!(yield s3call('headObject', imageKey))
+                if(rerun) {
+                    console.log('upload-cache -> already uploaded', JSON.stringify(imageKey, null, 0))
+                    continue
+                }
             }
+
+            console.log('upload-cache ->', JSON.stringify(imageKey, null, 0))
+
+            const Body = fs.readFileSync(cacheDir + '/' + fname)
+            const ContentType = JSON.parse(fs.readFileSync(cacheDir + '/' + sha1hex + '.json'))['content-type']
+            yield s3call('putObject', Object.assign({}, imageKey, {Body, ContentType}))
+        } catch(error) {
+            console.error('Error processing' + fname);
+            console.error(error);
         }
-
-        console.log('upload-cache ->', JSON.stringify(imageKey, null, 0))
-
-        const Body = fs.readFileSync(cacheDir + '/' + fname)
-        const ContentType = JSON.parse(fs.readFileSync(cacheDir + '/' + sha1hex + '.json'))['content-type']
-        yield s3call('putObject', Object.assign({}, imageKey, {Body, ContentType}))
     }
 }
 
