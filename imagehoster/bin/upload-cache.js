@@ -72,8 +72,10 @@ function* upload() {
             if(ftype) {
                 ContentType = ftype.mime
             } else {
-                console.log('Warning, unknown ContentType (via majic bytes), checking json metadata.', cacheDir + '/' + sha1hex + '.json');
-                ContentType = JSON.parse(fs.readFileSync(cacheDir + '/' + sha1hex + '.json'))['content-type']
+                const fn = cacheDir + '/' + sha1hex + '.json'
+                const ct = JSON.parse(fs.readFileSync(fn))['content-type']
+                console.log('Warning, Skipping unknown ContentType (via majic bytes), json metadata:', fn, ct);
+                continue
             }
             yield s3call('putObject', Object.assign({}, imageKey, {Body, ContentType}))
         } catch(error) {
