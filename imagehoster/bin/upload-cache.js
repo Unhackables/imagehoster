@@ -27,6 +27,7 @@ const dimRe = /\d+x\d+/
 
 const multihash = require('multihashes')
 const base58 = require('bs58')
+const fileType = require('file-type')
 
 let rerun = true
 
@@ -66,7 +67,14 @@ function* upload() {
             console.log('upload-cache ->', JSON.stringify(imageKey, null, 0))
 
             const Body = fs.readFileSync(cacheDir + '/' + fname)
-            const ContentType = JSON.parse(fs.readFileSync(cacheDir + '/' + sha1hex + '.json'))['content-type']
+            const ftype = fileType(Body)
+            let ContentType
+            if(ftype) {
+                ContentType = ftype.mime
+            } else {
+                console.log('Warning, unknown ContentType (via majic bytes), checking json metadata.', cacheDir + '/' + sha1hex + '.json');
+                ContentType = JSON.parse(fs.readFileSync(cacheDir + '/' + sha1hex + '.json'))['content-type']
+            }
             yield s3call('putObject', Object.assign({}, imageKey, {Body, ContentType}))
         } catch(error) {
             console.error('Error processing ' + fname);
