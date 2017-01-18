@@ -57,7 +57,8 @@ function* upload() {
 
             if(rerun) {
                 // skip when exists (only if they sequentially exist)
-                rerun = !!(yield s3call('headObject', imageKey))
+                const head = yield s3call('headObject', imageKey)
+                rerun = !!head
                 if(rerun) {
                     console.log('upload-cache -> already uploaded', JSON.stringify(imageKey, null, 0))
                     continue
@@ -74,12 +75,17 @@ function* upload() {
             } else {
                 const fn = cacheDir + '/' + sha1hex + '.json'
                 const data = fs.readFileSync(fn)
-                const ct = data && JSON.parse(data)['content-type']
+                let ct
+                try {
+                    ct = JSON.parse(data)['content-type']
+                } catch(error) {
+                    ct = 'non-json'
+                }
                 console.log('Warning, Skipping unknown ContentType (via majic bytes), json metadata:', fn, ct);
                 continue
             }
             yield s3call('putObject', Object.assign({}, imageKey, {Body, ContentType}))
-            yield waitFor('objectExists', imageKey)
+            // yield s3.waitFor('objectExists', imageKey)
         } catch(error) {
             console.error('Error processing ' + fname);
             console.error(error);
@@ -102,6 +108,7 @@ function s3call(method, params) {
 }
 
 const mhashEncode = (hash, mhashType) => base58.encode(multihash.encode(hash, mhashType))
-const call = gen => {let ret; do { ret = gen.next() } while(!ret.done)}
-call(upload())
 
+const genWorkflow = require('./GeneratorPromiseWorkflow')
+const uploadWorkflow = genWorkflow(upload)
+uploadWorkflow()
