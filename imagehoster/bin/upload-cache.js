@@ -33,11 +33,17 @@ const readChunk = require('read-chunk')
 
 function* upload() {
     const imageKeys = []
-    const cacheFilesRaw = fs.readdirSync(cacheDir)
 
     console.log(`Scanning..`);
-
-    for(const fname of cacheFilesRaw) {
+    const cacheFilesRaw = fs.readdirSync(cacheDir)
+    const scanSize = cacheFilesRaw.length
+    const scanReport = Math.max(Math.round(scanSize / 100), 1)
+    
+    for(let i = 0; i < cacheFilesRaw.length; i++) {
+        const fname = cacheFilesRaw[i]
+        if(i % scanReport === 0) {
+            console.log(`Scanning ${Math.round(((i + 1) / scanSize) * 100)}%`);
+        }
         // deda3dca887a2048a7cc4818ffeb5e69936f0744_100x100.bin
         // deda3dca887a2048a7cc4818ffeb5e69936f0744_500x500.bin
         // deda3dca887a2048a7cc4818ffeb5e69936f0744.bin
@@ -52,7 +58,7 @@ function* upload() {
         const chunkBuffer = readChunk.sync(fn, 0, 4100)
         const ftype = fileType(chunkBuffer)
         if(!ftype || !/^image\/(gif|jpeg|png)$/.test(ftype.mime)) {
-            console.log('Skipping,invalid content type', fn, ftype);
+            // console.log('Skipping, invalid content type', fn, ftype);
             continue
         }
 
