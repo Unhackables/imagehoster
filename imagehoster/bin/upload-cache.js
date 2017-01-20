@@ -18,6 +18,7 @@ if(process.env['STEEMIT_IMAGEPROXY_AWS_SECRET_KEY']) {
 
 const webBucket = process.env.STEEMIT_IMAGEPROXY_BUCKET_WEB || 'steemit-dev-imageproxy-web'
 const thumbnailBucket = process.env.STEEMIT_IMAGEPROXY_BUCKET_THUMBNAIL || 'steemit-dev-imageproxy-thumbnail'
+const genWorkflow = require('./GeneratorPromiseWorkflow')
 
 // program ..
 
@@ -28,39 +29,73 @@ const dimRe = /\d+x\d+/
 const multihash = require('multihashes')
 const base58 = require('bs58')
 const fileType = require('file-type')
+const readChunk = require('read-chunk')
 
 function* upload() {
-    const cacheFiles = fs.readdirSync(cacheDir)
-    for(const fname of cacheFiles) {
+    const imageKeys = []
+    const cacheFilesRaw = fs.readdirSync(cacheDir)
+
+    console.log(`Scanning..`);
+
+    for(const fname of cacheFilesRaw) {
         // deda3dca887a2048a7cc4818ffeb5e69936f0744_100x100.bin
         // deda3dca887a2048a7cc4818ffeb5e69936f0744_500x500.bin
         // deda3dca887a2048a7cc4818ffeb5e69936f0744.bin
         // deda3dca887a2048a7cc4818ffeb5e69936f0744.json
         // deda3dca887a2048a7cc4818ffeb5e69936f0744.url
+        if(fname.length < 38) continue
+
+        const [name, ext] = fname.split('.')
+        if(ext !== 'bin') continue
+
+        const fn = cacheDir + '/' + fname
+        const chunkBuffer = readChunk.sync(fn, 0, 4100)
+        const ftype = fileType(chunkBuffer)
+        if(!ftype || !/^image\/(gif|jpeg|png)$/.test(ftype.mime)) {
+            console.log('Skipping,invalid content type', fn, ftype);
+            continue
+        }
+
+        const dimension = dimRe.test(name) && name.match(dimRe)[0]
+        const sha1hex = name.substring(0, 40)
+        const Key = 'U' +
+            mhashEncode(new Buffer(sha1hex, 'hex'), 'sha1') +
+            (dimension ? '_' + dimension : '')
+
+        const Bucket = dimension ? thumbnailBucket : webBucket
+        const imageKey = {Key, Bucket}
+
+        imageKeys.push({imageKey, fname})
+    }
+
+    console.log(`Processing ${imageKeys.length} files..`);
+
+    let min = 0
+    let max = imageKeys.length - 1
+    let pos = Math.floor(max / 2)
+
+    function* startAt() {
+        // console.log('min, pos, max', min, pos, max)
+        const {imageKey} = imageKeys[pos]
+        const exists = !!(yield s3call('headObject', imageKey))
+        if(exists) {
+            console.log(`already uploaded (${pos})`, JSON.stringify(imageKey, null, 0))
+            min = pos + 1
+            pos += Math.round((max - pos) / 2)
+        } else {
+            console.log(`uploaded needed (${pos})`, JSON.stringify(imageKey, null, 0))
+            max = pos
+            pos -= Math.round((pos - min) / 2)
+        }
+        return pos < max ? yield genWorkflow(startAt)() : pos
+    }
+    pos = yield genWorkflow(startAt)()
+    if(pos == null) return
+
+    for(let i = pos; i < imageKeys.length; i++) {
+        const {imageKey, fname} = imageKeys[i]
         try {
-            if(fname.length < 38) continue
-
-            const [name, ext] = fname.split('.')
-            if(ext !== 'bin') continue
-
-            const sha1hex = name.substring(0, 40)
-            const dimension = dimRe.test(name) && name.match(dimRe)[0]
-            
-            const Key = 'U' +
-                mhashEncode(new Buffer(sha1hex, 'hex'), 'sha1') +
-                (dimension ? '_' + dimension : '')
-
-            const Bucket = dimension ? thumbnailBucket : webBucket
-            const imageKey = {Key, Bucket}
-
-            // skip when exists (only if they sequentially exist)
-            const exists = !!(yield s3call('headObject', imageKey))
-            if(exists) {
-                console.log('upload-cache -> already uploaded', JSON.stringify(imageKey, null, 0))
-                continue
-            }
-
-            console.log('upload-cache ->', JSON.stringify(imageKey, null, 0))
+            console.log(`uploading ${i}`, JSON.stringify(imageKey, null, 0))
 
             const Body = fs.readFileSync(cacheDir + '/' + fname)
             const ftype = fileType(Body)
@@ -68,15 +103,7 @@ function* upload() {
             if(ftype) {
                 ContentType = ftype.mime
             } else {
-                const fn = cacheDir + '/' + sha1hex + '.json'
-                const data = fs.readFileSync(fn)
-                let ct
-                try {
-                    ct = JSON.parse(data)['content-type']
-                } catch(error) {
-                    ct = 'non-json'
-                }
-                console.log('Warning, Skipping unknown ContentType (via majic bytes), json metadata:', fn, ct);
+                console.error('Error, unknown file type:', cacheDir + '/' + fname);
                 continue
             }
             yield s3call('putObject', Object.assign({}, imageKey, {Body, ContentType}))
@@ -104,6 +131,6 @@ function s3call(method, params) {
 
 const mhashEncode = (hash, mhashType) => base58.encode(multihash.encode(hash, mhashType))
 
-const genWorkflow = require('./GeneratorPromiseWorkflow')
+
 const uploadWorkflow = genWorkflow(upload)
 uploadWorkflow()
