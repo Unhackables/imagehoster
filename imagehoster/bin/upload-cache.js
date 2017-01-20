@@ -29,8 +29,6 @@ const multihash = require('multihashes')
 const base58 = require('bs58')
 const fileType = require('file-type')
 
-let rerun = true
-
 function* upload() {
     const cacheFiles = fs.readdirSync(cacheDir)
     for(const fname of cacheFiles) {
@@ -55,14 +53,11 @@ function* upload() {
             const Bucket = dimension ? thumbnailBucket : webBucket
             const imageKey = {Key, Bucket}
 
-            if(rerun) {
-                // skip when exists (only if they sequentially exist)
-                const head = yield s3call('headObject', imageKey)
-                rerun = !!head
-                if(rerun) {
-                    console.log('upload-cache -> already uploaded', JSON.stringify(imageKey, null, 0))
-                    continue
-                }
+            // skip when exists (only if they sequentially exist)
+            const exists = !!(yield s3call('headObject', imageKey))
+            if(exists) {
+                console.log('upload-cache -> already uploaded', JSON.stringify(imageKey, null, 0))
+                continue
             }
 
             console.log('upload-cache ->', JSON.stringify(imageKey, null, 0))
