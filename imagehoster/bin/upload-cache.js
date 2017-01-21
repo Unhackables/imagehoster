@@ -1,7 +1,10 @@
 
 /**
     Upload files from the disk-based imageproxy into the imagehoster Amazon buckets.
-
+    
+    nodejs has a 1.4gb max memory heap size by default, add --max_old_space_size=4096
+    to the command line if you get an out of memory error during scanning
+    
     node bin/upload-cache.js ../../imageproxy/cache
 */
 
