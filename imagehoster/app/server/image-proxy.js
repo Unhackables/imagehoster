@@ -184,7 +184,7 @@ function* fetchImage(ctx, Bucket, Key, url, webBucketKey) {
                 resolve({Body: imageBuffer, ContentType: mime})
                 return
             }
-            console.error(error);
+            console.log('404 Not Found', url);
             statusError(ctx, 404, 'Not Found')
             resolve()
         })
