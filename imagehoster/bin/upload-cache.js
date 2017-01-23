@@ -98,7 +98,9 @@ function* upload() {
         }
         return pos < max ? yield genWorkflow(startAt)() : pos
     }
-    pos = yield genWorkflow(startAt)()
+
+    // Start at position 0 to force upload everything.. OR if files are in order find the startAt to restart a sync 
+    pos = 0//yield genWorkflow(startAt)()
     if(pos == null) return
 
     for(let i = pos; i < imageKeys.length; i++) {
