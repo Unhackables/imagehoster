@@ -190,7 +190,7 @@ function* fetchImage(ctx, Bucket, Key, url, webBucketKey) {
         })
     })
     if(imgResult) {
-        const image = sharp(imgResult.Body);
+        const image = sharp(imgResult.Body).withMetadata();
         // Auto-orient based on the EXIF Orientation.  Remove orientation (if any)
         image.rotate()
         imgResult.Body = yield image.toBuffer()
@@ -200,7 +200,7 @@ function* fetchImage(ctx, Bucket, Key, url, webBucketKey) {
 }
 
 function* prepareThumbnail(imageBuffer, targetWidth, targetHeight) {
-    const image = sharp(imageBuffer);
+    const image = sharp(imageBuffer).withMetadata();
     const md = yield image.metadata()
     const geo = calculateGeo(md.width, md.height, targetWidth, targetHeight, 'fit')
 
