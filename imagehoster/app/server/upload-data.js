@@ -82,7 +82,7 @@ router.post('/:username/:signature', koaBody, function *() {
             return
         }
 
-        const posting = PublicKey.fromString(posting_pubkey)
+        posting = PublicKey.fromString(posting_pubkey)
     } catch(error) {
         console.error(error);
     }
@@ -131,7 +131,9 @@ router.post('/:username/:signature', koaBody, function *() {
         return
     }
 
-    const sha = hash.sha256(fbuffer)
+    // The challenge needs to be prefixed with a constant (both on the server and checked on the client) to make sure the server can't easily make the client sign a transaction doing something else.
+    const prefix = new Buffer('ImageSigningChallenge')
+    const sha = hash.sha256(Buffer.concat([prefix, fbuffer]))
 
     let userVerified = false
     if(posting) {
