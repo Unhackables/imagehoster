@@ -11,6 +11,7 @@ import fileType from 'file-type'
 import exif from 'app/server/exif'
 import multihash from 'multihashes'
 import base58 from 'bs58'
+import sharp from 'sharp'
 
 const testKey = config.testKey ? PrivateKey.fromSeed('').toPublicKey() : null
 
@@ -155,6 +156,11 @@ router.post('/:username/:signature', koaBody, function *() {
             return
         }
     }
+
+    const image = sharp(fbuffer);
+    // Auto-orient based on the EXIF Orientation.  Remove orientation (if any)
+    image.rotate()
+    fbuffer = yield image.toBuffer()
 
     // Data hash (D)
     const key = 'D' + base58.encode(multihash.encode(sha, 'sha2-256'))

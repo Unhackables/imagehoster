@@ -190,6 +190,10 @@ function* fetchImage(ctx, Bucket, Key, url, webBucketKey) {
         })
     })
     if(imgResult) {
+        const image = sharp(imgResult.Body);
+        // Auto-orient based on the EXIF Orientation.  Remove orientation (if any)
+        image.rotate()
+        imgResult.Body = yield image.toBuffer()
         yield s3call('putObject', Object.assign({}, webBucketKey, imgResult))
     }
     return imgResult
@@ -212,7 +216,6 @@ function* prepareThumbnail(imageBuffer, targetWidth, targetHeight) {
 }
 
 function calculateGeo(origWidth, origHeight, targetWidth, targetHeight, mode) {
-
     // Default ratio. Default crop.
     var origRatio  = (origHeight !== 0 ? (origWidth / origHeight) : 1),
         cropWidth  = origWidth,
