@@ -8,7 +8,6 @@ import {repLog10} from 'app/server/utils'
 import {missing, getRemoteIp, limit} from 'app/server/utils-koa'
 import {hash, Signature, PublicKey, PrivateKey} from 'shared/ecc'
 import fileType from 'file-type'
-import exif from 'app/server/exif'
 import multihash from 'multihashes'
 import base58 from 'bs58'
 import sharp from 'sharp'
@@ -134,11 +133,11 @@ router.post('/:username/:signature', koaBody, function *() {
 
     // The challenge needs to be prefixed with a constant (both on the server and checked on the client) to make sure the server can't easily make the client sign a transaction doing something else.
     const prefix = new Buffer('ImageSigningChallenge')
-    const sha = hash.sha256(Buffer.concat([prefix, fbuffer]))
+    const shaVerify = hash.sha256(Buffer.concat([prefix, fbuffer]))
 
     let userVerified = false
     if(posting) {
-        if(!sig.verifyHash(sha, posting) && !(testKey && sig.verifyHash(sha, testKey))) {
+        if(!sig.verifyHash(shaVerify, posting) && !(testKey && sig.verifyHash(shaVerify, testKey))) {
             this.status = 400
             this.statusText = `Signature did not verify.`
             this.body = {error: this.statusText}
@@ -157,27 +156,18 @@ router.post('/:username/:signature', koaBody, function *() {
         }
     }
 
+    // Sharp will remove EXIF info by default..
+    // For privacy, remove: GPS Information, Camera Info, etc.. 
     const image = sharp(fbuffer);
     // Auto-orient based on the EXIF Orientation.  Remove orientation (if any)
     image.rotate()
+
+    // Must verify signature before altering fbuffer
     fbuffer = yield image.toBuffer()
 
     // Data hash (D)
+    const sha = hash.sha256(fbuffer)
     const key = 'D' + base58.encode(multihash.encode(sha, 'sha2-256'))
-    if(mime === 'image/jpeg') {
-        // For privacy, remove: GPS Information, Camera Info, etc.. 
-        // Must verify signature before altering fbuffer
-        try {
-            const fclean = exif.remove(fbuffer);
-            if(fclean) {
-                fbuffer = fclean
-            } else {
-                console.error('Exif filter failure', key);
-            }
-        } catch(error) {
-            console.error(error);
-        }
-    }
 
     const params = {Bucket: uploadBucket, Key: key, Body: fbuffer};
     if(mime) {
