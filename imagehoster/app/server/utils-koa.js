@@ -60,7 +60,7 @@ export function* limit(ctx, type, key, description, unitLabel, amount = 1) {
         const [[{over, desc}]] = yield tarantool.call('limit', type, key, description, unitLabel, amount)
         if(over) throw desc
     } catch(error) {
-        console.error(error)
+        // console.error(error)
         if(typeof error === 'string') { 
             ctx.status = 400
             ctx.statusText = error

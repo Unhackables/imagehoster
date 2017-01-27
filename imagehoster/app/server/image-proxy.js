@@ -9,6 +9,7 @@ import {waitFor, s3call, s3} from 'app/server/amazon-bucket'
 
 import base58 from 'bs58'
 import multihash from 'multihashes'
+import isAnimated from 'is-animated'
 import fileType from 'file-type'
 import request from 'request'
 import sharp from 'sharp'
@@ -83,8 +84,8 @@ router.get('/:width(\\d+)x:height(\\d+)/:url(.*)', function *() {
         const resizedKey = Key + `_${targetWidth}x${targetHeight}`
         const thumbnailKey = {Bucket: thumbnailBucket, Key: resizedKey}
 
-        if(TRACE) console.log('image-proxy -> has thumbnail')
         const hasThumbnail = (yield s3call('headObject', thumbnailKey)) != null
+        if(TRACE) console.log('image-proxy -> resize has thumbnail', hasThumbnail)
 
         if(hasThumbnail) {
             const params = {Bucket: thumbnailBucket, Key: resizedKey, Expires: 60}
@@ -95,7 +96,6 @@ router.get('/:width(\\d+)x:height(\\d+)/:url(.*)', function *() {
         }
 
         // no thumbnail, fetch and cache
-        if(TRACE) console.log('image-proxy -> fetch original')
         const imageResult = yield fetchImage(this, Bucket, Key, url, webBucketKey)
         if(!imageResult) {
             return
@@ -127,16 +127,14 @@ router.get('/:width(\\d+)x:height(\\d+)/:url(.*)', function *() {
 
     // A full size image
 
-    if(TRACE) console.log('image-proxy -> has original')
     const hasOriginal = !!(yield s3call('headObject', originalKey))
     if(hasOriginal) {
-        if(TRACE) console.log('image-proxy -> original redirect')
+        if(TRACE) console.log('image-proxy -> original redirect', JSON.stringify(originalKey, null, 0))
         const url = s3.getSignedUrl('getObject', originalKey)
         this.redirect(url)
         return
     }
 
-    if(TRACE) console.log('image-proxy -> fetchImage')
     const imageResult = yield fetchImage(this, Bucket, Key, url, webBucketKey)
     if(!imageResult) {
         return
@@ -158,6 +156,9 @@ function* fetchImage(ctx, Bucket, Key, url, webBucketKey) {
         // The url appeared to be in the Upload bucket but was not,
         // double-check the webbucket to be sure.
         img = yield s3call('getObject', webBucketKey)
+        if(TRACE) console.log('image-proxy -> fetch image cache', !!img, JSON.stringify(webBucketKey, null, 0))
+    } else {
+        if(TRACE) console.log('image-proxy -> fetch image cache', !!img, JSON.stringify({Bucket, Key}, null, 0))
     }
     if(img) {
         const {Body, ContentType} = img
@@ -190,10 +191,12 @@ function* fetchImage(ctx, Bucket, Key, url, webBucketKey) {
         })
     })
     if(imgResult) {
-        const image = sharp(imgResult.Body).withMetadata();
-        // Auto-orient based on the EXIF Orientation.  Remove orientation (if any)
-        image.rotate()
-        imgResult.Body = yield image.toBuffer()
+        if(!isAnimated(imgResult.Body)) {
+            const image = sharp(imgResult.Body).withMetadata();
+            // Auto-orient based on the EXIF Orientation.  Remove orientation (if any)
+            image.rotate()
+            imgResult.Body = yield image.toBuffer()
+        }
         yield s3call('putObject', Object.assign({}, webBucketKey, imgResult))
     }
     return imgResult
@@ -268,7 +271,7 @@ function calculateGeo(origWidth, origHeight, targetWidth, targetHeight, mode) {
     };
 }
 
-const simpleHashRe = /DQm[a-zA-Z]{38,46}/
+const simpleHashRe = /DQm[a-zA-Z0-9]{38,46}/
 const urlHash = url => 'U' + mhashEncode(sha1(url), 'sha1')
 
 export default router.routes()

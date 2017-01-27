@@ -7,6 +7,7 @@ import fs from 'fs'
 import {repLog10} from 'app/server/utils'
 import {missing, getRemoteIp, limit} from 'app/server/utils-koa'
 import {hash, Signature, PublicKey, PrivateKey} from 'shared/ecc'
+import isAnimated from 'is-animated'
 import fileType from 'file-type'
 import multihash from 'multihashes'
 import base58 from 'bs58'
@@ -156,14 +157,17 @@ router.post('/:username/:signature', koaBody, function *() {
         }
     }
 
-    // Sharp will remove EXIF info by default..
-    // For privacy, remove: GPS Information, Camera Info, etc.. 
-    const image = sharp(fbuffer);
-    // Auto-orient based on the EXIF Orientation.  Remove orientation (if any)
-    image.rotate()
+    if(!isAnimated(fbuffer)) {
+        // Sharp will remove EXIF info by default..
+        // For privacy, remove: GPS Information, Camera Info, etc.. 
+        const image = sharp(fbuffer);
 
-    // Must verify signature before altering fbuffer
-    fbuffer = yield image.toBuffer()
+        // Auto-orient based on the EXIF Orientation.  Remove orientation (if any)
+        image.rotate()
+
+        // Must verify signature before altering fbuffer
+        fbuffer = yield image.toBuffer()
+    }
 
     // Data hash (D)
     const sha = hash.sha256(fbuffer)
