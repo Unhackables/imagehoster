@@ -4,7 +4,7 @@
   "description": "",
   "main": "upload-data.js",
   "scripts": {
-    "start": "NODE_ENV=development NODE_PATH=. babel-node --presets es2015 ./app/server/server.js ",
+    "start": "NODE_PATH=. babel-node --presets es2015 ./app/server/server.js ",
     "test": "mocha --compilers js:babel-core/register --recursive -- test/*"
   },
   "author": "",
