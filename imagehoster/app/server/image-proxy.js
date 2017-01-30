@@ -6,10 +6,10 @@ import {hash} from 'shared/ecc'
 import {sha1, mhashEncode} from 'app/server/hash'
 import {missing, statusError} from 'app/server/utils-koa'
 import {waitFor, s3call, s3} from 'app/server/amazon-bucket'
+import {exif, hasOrientation} from 'app/server/exif-utils'
 
 import base58 from 'bs58'
 import multihash from 'multihashes'
-import isAnimated from 'is-animated'
 import fileType from 'file-type'
 import request from 'request'
 import sharp from 'sharp'
@@ -191,11 +191,24 @@ function* fetchImage(ctx, Bucket, Key, url, webBucketKey) {
         })
     })
     if(imgResult) {
-        if(!isAnimated(imgResult.Body)) {
-            const image = sharp(imgResult.Body).withMetadata();
-            // Auto-orient based on the EXIF Orientation.  Remove orientation (if any)
-            image.rotate()
-            imgResult.Body = yield image.toBuffer()
+        if(imgResult.ContentType === 'image/jpeg') {
+            try {
+                const exifData = yield exif(imgResult.Body)
+                console.log('exifData', exifData)
+                const orientation = hasOrientation(exifData)
+                console.log('orientation', orientation)
+                if(orientation) {
+                    // Sharp will remove EXIF info by default unless withMetadata is called..
+                    const image = sharp(imgResult.Body).withMetadata()
+
+                    // Auto-orient and remove EXIF Orientation property
+                    image.rotate()
+
+                    imgResult.Body = yield image.toBuffer()
+                }
+            } catch(error) {
+                console.error('image-proxy process image', error);
+            }
         }
         yield s3call('putObject', Object.assign({}, webBucketKey, imgResult))
     }

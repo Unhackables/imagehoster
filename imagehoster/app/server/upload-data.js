@@ -5,9 +5,9 @@ import Apis from 'shared/api_client/ApiInstances'
 
 import fs from 'fs'
 import {repLog10} from 'app/server/utils'
+import {exif, hasLocation, hasOrientation} from 'app/server/exif-utils'
 import {missing, getRemoteIp, limit} from 'app/server/utils-koa'
 import {hash, Signature, PublicKey, PrivateKey} from 'shared/ecc'
-import isAnimated from 'is-animated'
 import fileType from 'file-type'
 import multihash from 'multihashes'
 import base58 from 'bs58'
@@ -157,16 +157,27 @@ router.post('/:username/:signature', koaBody, function *() {
         }
     }
 
-    if(!isAnimated(fbuffer)) {
-        // Sharp will remove EXIF info by default..
-        // For privacy, remove: GPS Information, Camera Info, etc.. 
-        const image = sharp(fbuffer);
+    if(mime === 'image/jpeg') {
+        try {
+            const exifData = yield exif(fbuffer)
+            const orientation = hasOrientation(exifData)
+            const location = hasLocation(exifData)
+            if(location || orientation) {
+                const image = sharp(fbuffer)
 
-        // Auto-orient based on the EXIF Orientation.  Remove orientation (if any)
-        image.rotate()
+                // For privacy, remove: GPS Information, Camera Info, etc.. 
+                // Sharp will remove EXIF info by default unless withMetadata is called..
+                if(!location) image.withMetadata()
 
-        // Must verify signature before altering fbuffer
-        fbuffer = yield image.toBuffer()
+                // Auto-orient based on the EXIF Orientation.  Remove orientation (if any)
+                if(orientation) image.rotate()
+
+                // Verify signature before altering fbuffer
+                fbuffer = yield image.toBuffer()
+            }
+        } catch(error) {
+            console.error('upload-data process image', error);
+        }
     }
 
     // Data hash (D)
