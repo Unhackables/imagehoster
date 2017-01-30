@@ -19,7 +19,6 @@
     "exif": "^0.6.0",
     "file-type": "^3.9.0",
     "immutable": "^3.8.1",
-    "is-animated": "^1.1.1",
     "koa": "^1.2.4",
     "koa-body": "^1.5.0",
     "koa-cors": "0.0.16",
