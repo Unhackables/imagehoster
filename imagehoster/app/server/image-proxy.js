@@ -101,18 +101,18 @@ router.get('/:width(\\d+)x:height(\\d+)/:url(.*)', function *() {
             return
         }
 
-        if(TRACE) console.log('image-proxy -> original save')
+        if(TRACE) console.log('image-proxy -> original save', url, JSON.stringify(webBucketKey, null, 0))
         yield s3call('putObject', Object.assign({}, webBucketKey, imageResult))
 
         try {
             if(TRACE) console.log('image-proxy -> prepare thumbnail')
             const thumbnail = yield prepareThumbnail(imageResult.Body, targetWidth, targetHeight)
 
-            if(TRACE) console.log('image-proxy -> thumbnail save')
+            if(TRACE) console.log('image-proxy -> thumbnail save', JSON.stringify(thumbnailKey, null, 0))
             yield s3call('putObject', Object.assign({}, thumbnailKey, thumbnail))
             yield waitFor('objectExists', thumbnailKey)
 
-            if(TRACE) console.log('image-proxy -> thumbnail redirect')
+            if(TRACE) console.log('image-proxy -> thumbnail redirect', JSON.stringify(thumbnailKey, null, 0))
             const url = s3.getSignedUrl('getObject', thumbnailKey)
             this.redirect(url)
         } catch(error) {
@@ -194,9 +194,7 @@ function* fetchImage(ctx, Bucket, Key, url, webBucketKey) {
         if(imgResult.ContentType === 'image/jpeg') {
             try {
                 const exifData = yield exif(imgResult.Body)
-                console.log('exifData', exifData)
                 const orientation = hasOrientation(exifData)
-                console.log('orientation', orientation)
                 if(orientation) {
                     // Sharp will remove EXIF info by default unless withMetadata is called..
                     const image = sharp(imgResult.Body).withMetadata()
@@ -207,7 +205,7 @@ function* fetchImage(ctx, Bucket, Key, url, webBucketKey) {
                     imgResult.Body = yield image.toBuffer()
                 }
             } catch(error) {
-                console.error('image-proxy process image', error);
+                console.error('image-proxy process image', url, error);
             }
         }
         yield s3call('putObject', Object.assign({}, webBucketKey, imgResult))

@@ -6,18 +6,20 @@ export function* exif(buffer) {
             const exif = new ExifImage()
             exif.loadImage(buffer, function (error, data) {
                 if (error) {
-                    // console.log('Error: '+error.message);
-                    reject(error)
+                    if(error.code === 'NO_EXIF_SEGMENT') {
+                        resolve(null)
+                    } else {
+                        reject(error)
+                    }
                 } else {
                     resolve(data)
                 }
             });
         } catch (error) {
-            // console.log('Error: ' + error.message);
             reject(error)
         }
     })
 }
 
-export const hasOrientation = ({image: {Orientation}}) => Orientation != null
-export const hasLocation = ({gps}) => Object.keys(gps).find(key => /Latitude|Longitude|Altitude/i.test(key)) != null
+export const hasOrientation = (d = {}) => d && d.image && d.image.Orientation != null
+export const hasLocation = (d = {}) => d && d.gps && Object.keys(d.gps).find(key => /Latitude|Longitude|Altitude/i.test(key)) != null
