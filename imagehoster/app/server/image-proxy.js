@@ -6,7 +6,6 @@ import {hash} from 'shared/ecc'
 import {sha1, mhashEncode} from 'app/server/hash'
 import {missing, statusError} from 'app/server/utils-koa'
 import {waitFor, s3call, s3} from 'app/server/amazon-bucket'
-import {exif, hasOrientation} from 'app/server/exif-utils'
 
 import base58 from 'bs58'
 import multihash from 'multihashes'
@@ -50,6 +49,21 @@ router.get('/:width(\\d+)x:height(\\d+)/:url(.*)', function *() {
     const targetWidth = parseInt(this.params.width, 10)
     const targetHeight = parseInt(this.params.height, 10)
 
+    const dimensions = [
+        [1680, 1050],
+        [640, 480],
+        [256, 512],
+        [320, 320],
+        [120, 120],
+        [0, 0],
+    ]
+
+    const index = dimensions.findIndex(tuple => targetWidth === tuple[0] && targetHeight === tuple[1])
+    if(index === -1) {
+        statusError(this, 400, 'Bad Request. URL dimension `WIDTH`x`HEIGHT` should match: ' + JSON.stringify(dimensions, null, 0))
+        return
+    }
+
     // image blacklist
     const blacklist = [
         'https://pbs.twimg.com/media/CoN_sC6XEAE7VOB.jpg:large',
@@ -66,10 +80,6 @@ router.get('/:width(\\d+)x:height(\\d+)/:url(.*)', function *() {
         statusError(this, 403, 'Forbidden')
         return
     }
-    if (targetWidth > 1200 || targetHeight > 1200) {
-        statusError(this, 400, 'Requested thumbnail size is too large')
-        return
-    }
 
     // Uploaded images were keyed by the hash of the image data and store these in the upload bucket.  
     // The proxy images use the hash of image url and are stored in the web bucket.
@@ -79,7 +89,7 @@ router.get('/:width(\\d+)x:height(\\d+)/:url(.*)', function *() {
     const originalKey = {Bucket, Key}
     const webBucketKey = {Bucket: webBucket, Key}
 
-    const resizeRequest = targetWidth !== 0
+    const resizeRequest = targetWidth !== 0 || targetHeight !== 0
     if(resizeRequest) {
         const resizedKey = Key + `_${targetWidth}x${targetHeight}`
         const thumbnailKey = {Bucket: thumbnailBucket, Key: resizedKey}
@@ -144,7 +154,7 @@ router.get('/:width(\\d+)x:height(\\d+)/:url(.*)', function *() {
     yield s3call('putObject', Object.assign({}, webBucketKey, imageResult))
     yield waitFor('objectExists', webBucketKey)
 
-    if(TRACE) console.log('image-proxy -> original redirect')
+    if(TRACE) console.log('image-proxy -> original redirect', JSON.stringify(webBucketKey, null, 0))
     const signedUrl = s3.getSignedUrl('getObject', webBucketKey)
     this.redirect(signedUrl)
 })
@@ -191,34 +201,17 @@ function* fetchImage(ctx, Bucket, Key, url, webBucketKey) {
         })
     })
     if(imgResult) {
-        if(imgResult.ContentType === 'image/jpeg') {
-            try {
-                const exifData = yield exif(imgResult.Body)
-                const orientation = hasOrientation(exifData)
-                if(orientation) {
-                    // Sharp will remove EXIF info by default unless withMetadata is called..
-                    const image = sharp(imgResult.Body).withMetadata()
-
-                    // Auto-orient and remove EXIF Orientation property
-                    image.rotate()
-
-                    imgResult.Body = yield image.toBuffer()
-                }
-            } catch(error) {
-                console.error('image-proxy process image', url, error.message);
-            }
-        }
         yield s3call('putObject', Object.assign({}, webBucketKey, imgResult))
     }
     return imgResult
 }
 
 function* prepareThumbnail(imageBuffer, targetWidth, targetHeight) {
-    const image = sharp(imageBuffer).withMetadata();
+    const image = sharp(imageBuffer).withMetadata().rotate();
     const md = yield image.metadata()
-    const geo = calculateGeo(md.width, md.height, targetWidth, targetHeight, 'fit')
+    const geo = calculateGeo(md.width, md.height, targetWidth, targetHeight)
 
-    let i = image.resize(geo.finalWidth, geo.finalHeight)
+    let i = image.resize(geo.width, geo.height)
     let type = md.format
     if(md.format === 'gif') {
         // convert animated gifs into a flat png
@@ -229,11 +222,9 @@ function* prepareThumbnail(imageBuffer, targetWidth, targetHeight) {
     return {Body, ContentType: `image/${type}`}
 }
 
-function calculateGeo(origWidth, origHeight, targetWidth, targetHeight, mode) {
+function calculateGeo(origWidth, origHeight, targetWidth, targetHeight) {
     // Default ratio. Default crop.
-    var origRatio  = (origHeight !== 0 ? (origWidth / origHeight) : 1),
-        cropWidth  = origWidth,
-        cropHeight = origHeight;
+    var origRatio  = (origHeight !== 0 ? (origWidth / origHeight) : 1)
 
     // Fill in missing target dims.
     if (targetWidth === 0 && targetHeight === 0) {
@@ -249,36 +240,20 @@ function calculateGeo(origWidth, origHeight, targetWidth, targetHeight, mode) {
     if(targetWidth > origWidth)   targetWidth  = origWidth;
     if(targetHeight > origHeight) targetHeight = origHeight;
 
-    // If mode is 'fit', just scale. Otherwise crop to bounds.
     var targetRatio = targetWidth / targetHeight;
-    if(mode == 'fit') {
-        if (targetRatio > origRatio) {
-            // max out height, and calc a smaller width
-            targetWidth = Math.round(targetHeight * origRatio);
-        } else if (targetRatio < origRatio) {
-            // max out width, calc a smaller height
-            targetHeight = Math.round(targetWidth / origRatio);
-        }
-    } else {
-        if (targetRatio > origRatio) {
-            // original image too high
-            cropHeight = Math.round(origWidth / targetRatio);
-        } else if (targetRatio < origRatio) {
-            // original image too wide
-            cropWidth = Math.round(origHeight * targetRatio);
-        }
+    if (targetRatio > origRatio) {
+        // max out height, and calc a smaller width
+        targetWidth = Math.round(targetHeight * origRatio);
+    } else if (targetRatio < origRatio) {
+        // max out width, calc a smaller height
+        targetHeight = Math.round(targetWidth / origRatio);
     }
 
-    //logger.info('Original: ' + origWidth + 'x' + origHeight + ' -> Target: ' + targetWidth + 'x' + targetHeight);
+    // console.log('Original: ' + origWidth + 'x' + origHeight + ' -> Target: ' + targetWidth + 'x' + targetHeight);
 
     return {
-        // This will be final size
-        finalWidth:  targetWidth,
-        finalHeight: targetHeight,
-
-        // This is crop region (unused for now)
-        cropWidth:  cropWidth,
-        cropHeight: cropHeight
+        width:  targetWidth,
+        height: targetHeight,
     };
 }
 
