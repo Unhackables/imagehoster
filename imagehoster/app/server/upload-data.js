@@ -157,6 +157,10 @@ router.post('/:username/:signature', koaBody, function *() {
         }
     }
 
+    // Data hash (D)
+    const sha = hash.sha256(fbuffer)
+    const key = 'D' + base58.encode(multihash.encode(sha, 'sha2-256'))
+
     if(mime === 'image/jpeg') {
         try {
             const exifData = yield exif(fbuffer)
@@ -176,13 +180,9 @@ router.post('/:username/:signature', koaBody, function *() {
                 fbuffer = yield image.toBuffer()
             }
         } catch(error) {
-            console.error('upload-data process image', error);
+            console.error('upload-data process image', key, error.message);
         }
     }
-
-    // Data hash (D)
-    const sha = hash.sha256(fbuffer)
-    const key = 'D' + base58.encode(multihash.encode(sha, 'sha2-256'))
 
     const params = {Bucket: uploadBucket, Key: key, Body: fbuffer};
     if(mime) {

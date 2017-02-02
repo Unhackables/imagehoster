@@ -205,7 +205,7 @@ function* fetchImage(ctx, Bucket, Key, url, webBucketKey) {
                     imgResult.Body = yield image.toBuffer()
                 }
             } catch(error) {
-                console.error('image-proxy process image', url, error);
+                console.error('image-proxy process image', url, error.message);
             }
         }
         yield s3call('putObject', Object.assign({}, webBucketKey, imgResult))
