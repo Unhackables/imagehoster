@@ -46,8 +46,14 @@ router.get('/:width(\\d+)x:height(\\d+)/:url(.*)', function *() {
         return
     }
 
-    const targetWidth = parseInt(this.params.width, 10)
-    const targetHeight = parseInt(this.params.height, 10)
+    let targetWidth = parseInt(this.params.width, 10)
+    let targetHeight = parseInt(this.params.height, 10)
+
+    // Force a thumnail until the web urls are requesting 1680x8400 instead of 0x0..  The thumnail fixes image rotation.
+    if(targetWidth === 0 && targetHeight === 0) {
+        targetWidth = 1680
+        targetHeight = 8400
+    }
 
     const dimensions = [
         [1680, 8400], // index === 0 is a special case for animated gifs (see below)
