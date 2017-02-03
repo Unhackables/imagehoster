@@ -18,7 +18,7 @@ const TRACE = process.env.STEEMIT_IMAGEPROXY_TRACE || false
 
 const router = require('koa-router')()
 
-// http://localhost:3234/100x150/https://cdn.meme.am/cache/instances/folder136/400x400/67577136.jpg
+// http://localhost:3234/640x480/https://cdn.meme.am/cache/instances/folder136/400x400/67577136.jpg
 // http://localhost:3234/0x0/https://cdn.meme.am/cache/instances/folder136/400x400/67577136.jpg
 router.get('/:width(\\d+)x:height(\\d+)/:url(.*)', function *() {
     if(missing(this, this.params, 'width')) return
@@ -30,12 +30,12 @@ router.get('/:width(\\d+)x:height(\\d+)/:url(.*)', function *() {
     //   start of 'http'. A few edge cases:
     //
     // * query strings
-    // originalUrl: /150x100/https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcTZN5Du9Iai_05bMuJrxJuGTfqxNstuOvTP7Mzx-otuUVveeh8D
+    // originalUrl: /640x480/https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcTZN5Du9Iai_05bMuJrxJuGTfqxNstuOvTP7Mzx-otuUVveeh8D
     // params.url:  https://encrypted-tbn2.gstatic.com/images
     // expect url:  https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcTZN5Du9Iai_05bMuJrxJuGTfqxNstuOvTP7Mzx-otuUVveeh8D
     //
     // * encoded parts
-    // originalUrl: /150x100/https://vignette1.wikia.nocookie.net/villains/images/9/9c/Monstro_%28Disney%29.png
+    // originalUrl: /640x480/https://vignette1.wikia.nocookie.net/villains/images/9/9c/Monstro_%28Disney%29.png
     // params.url:  https://vignette1.wikia.nocookie.net/villains/images/9/9c/Monstro_(Disney).png
     // expect url:  https://vignette1.wikia.nocookie.net/villains/images/9/9c/Monstro_%28Disney%29.png
     let url = this.request.originalUrl.substring(this.request.originalUrl.indexOf('http'))
@@ -107,7 +107,7 @@ router.get('/:width(\\d+)x:height(\\d+)/:url(.*)', function *() {
 
         // Sharp can't resize all frames in the animated gif .. just return the full image
         // http://localhost:3234/1680x8400/http://mashable.com/wp-content/uploads/2013/07/ariel.gif
-        if(index === 0) {
+        if(index === 0) { // index === 0 is used to show animations in the full-post size only
             // Case 1 of 2: re-fetching
             const imageHead = yield fetchHead(this, Bucket, Key, url, webBucketKey)
             if(imageHead && imageHead.ContentType === 'image/gif') {
