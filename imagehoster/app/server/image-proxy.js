@@ -55,21 +55,7 @@ router.get('/:width(\\d+)x:height(\\d+)/:url(.*)', function *() {
         targetHeight = 8400
     }
 
-    const dimensions = [
-        [1680, 8400], // index === 0 is a special case for animated gifs (see below)
-        [640, 480],
-        [256, 512],
-        [320, 320],
-        [128, 256],
-        [120, 120],
-        [0, 0],
-    ]
-
-    const index = dimensions.findIndex(tuple => targetWidth === tuple[0] && targetHeight === tuple[1])
-    if(index === -1) {
-        statusError(this, 400, 'Bad Request. URL dimension `WIDTH`x`HEIGHT` should match: ' + JSON.stringify(dimensions, null, 0))
-        return
-    }
+    const fullSize = targetWidth === 1680 && targetHeight === 8400
 
     // image blacklist
     const blacklist = [
@@ -114,7 +100,7 @@ router.get('/:width(\\d+)x:height(\\d+)/:url(.*)', function *() {
 
         // Sharp can't resize all frames in the animated gif .. just return the full image
         // http://localhost:3234/1680x8400/http://mashable.com/wp-content/uploads/2013/07/ariel.gif
-        if(index === 0) { // index === 0 is used to show animations in the full-post size only
+        if(fullSize) { // fullSize is used to show animations in the full-post size only
             // Case 1 of 2: re-fetching
             const imageHead = yield fetchHead(this, Bucket, Key, url, webBucketKey)
             if(imageHead && imageHead.ContentType === 'image/gif') {
@@ -135,7 +121,7 @@ router.get('/:width(\\d+)x:height(\\d+)/:url(.*)', function *() {
         if(TRACE) console.log('image-proxy -> original save', url, JSON.stringify(webBucketKey, null, 0))
         yield s3call('putObject', Object.assign({}, webBucketKey, imageResult))
 
-        if(index === 0 && imageResult.ContentType === 'image/gif') {
+        if(fullSize && imageResult.ContentType === 'image/gif') {
             // Case 2 of 2: initial fetch
             yield waitFor('objectExists', webBucketKey)
             if(TRACE) console.log('image-proxy -> new gif redirect (animated gif work-around)', JSON.stringify(webBucketKey, null, 0))
