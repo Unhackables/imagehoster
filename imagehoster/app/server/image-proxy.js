@@ -6,7 +6,6 @@ import {hash} from 'shared/ecc'
 import {sha1, mhashEncode} from 'app/server/hash'
 import {missing, statusError} from 'app/server/utils-koa'
 import {waitFor, s3call, s3} from 'app/server/amazon-bucket'
-import {exif, hasOrientation} from 'app/server/exif-utils'
 
 import base58 from 'bs58'
 import multihash from 'multihashes'
@@ -19,7 +18,7 @@ const TRACE = process.env.STEEMIT_IMAGEPROXY_TRACE || false
 
 const router = require('koa-router')()
 
-// http://localhost:3234/100x150/https://cdn.meme.am/cache/instances/folder136/400x400/67577136.jpg
+// http://localhost:3234/640x480/https://cdn.meme.am/cache/instances/folder136/400x400/67577136.jpg
 // http://localhost:3234/0x0/https://cdn.meme.am/cache/instances/folder136/400x400/67577136.jpg
 router.get('/:width(\\d+)x:height(\\d+)/:url(.*)', function *() {
     if(missing(this, this.params, 'width')) return
@@ -31,12 +30,12 @@ router.get('/:width(\\d+)x:height(\\d+)/:url(.*)', function *() {
     //   start of 'http'. A few edge cases:
     //
     // * query strings
-    // originalUrl: /150x100/https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcTZN5Du9Iai_05bMuJrxJuGTfqxNstuOvTP7Mzx-otuUVveeh8D
+    // originalUrl: /640x480/https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcTZN5Du9Iai_05bMuJrxJuGTfqxNstuOvTP7Mzx-otuUVveeh8D
     // params.url:  https://encrypted-tbn2.gstatic.com/images
     // expect url:  https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcTZN5Du9Iai_05bMuJrxJuGTfqxNstuOvTP7Mzx-otuUVveeh8D
     //
     // * encoded parts
-    // originalUrl: /150x100/https://vignette1.wikia.nocookie.net/villains/images/9/9c/Monstro_%28Disney%29.png
+    // originalUrl: /640x480/https://vignette1.wikia.nocookie.net/villains/images/9/9c/Monstro_%28Disney%29.png
     // params.url:  https://vignette1.wikia.nocookie.net/villains/images/9/9c/Monstro_(Disney).png
     // expect url:  https://vignette1.wikia.nocookie.net/villains/images/9/9c/Monstro_%28Disney%29.png
     let url = this.request.originalUrl.substring(this.request.originalUrl.indexOf('http'))
@@ -47,8 +46,29 @@ router.get('/:width(\\d+)x:height(\\d+)/:url(.*)', function *() {
         return
     }
 
-    const targetWidth = parseInt(this.params.width, 10)
-    const targetHeight = parseInt(this.params.height, 10)
+    let targetWidth = parseInt(this.params.width, 10)
+    let targetHeight = parseInt(this.params.height, 10)
+
+    // Force a thumnail until the web urls are requesting 1680x8400 instead of 0x0..  The thumnail fixes image rotation.
+    if(targetWidth === 0 && targetHeight === 0) {
+        targetWidth = 1680
+        targetHeight = 8400
+    }
+
+    const dimensions = [
+        [1680, 8400], // index === 0 is a special case for animated gifs (see below)
+        [640, 480],
+        [256, 512],
+        [320, 320],
+        [120, 120],
+        [0, 0],
+    ]
+
+    const index = dimensions.findIndex(tuple => targetWidth === tuple[0] && targetHeight === tuple[1])
+    if(index === -1) {
+        statusError(this, 400, 'Bad Request. URL dimension `WIDTH`x`HEIGHT` should match: ' + JSON.stringify(dimensions, null, 0))
+        return
+    }
 
     // image blacklist
     const blacklist = [
@@ -66,10 +86,6 @@ router.get('/:width(\\d+)x:height(\\d+)/:url(.*)', function *() {
         statusError(this, 403, 'Forbidden')
         return
     }
-    if (targetWidth > 1200 || targetHeight > 1200) {
-        statusError(this, 400, 'Requested thumbnail size is too large')
-        return
-    }
 
     // Uploaded images were keyed by the hash of the image data and store these in the upload bucket.  
     // The proxy images use the hash of image url and are stored in the web bucket.
@@ -79,7 +95,7 @@ router.get('/:width(\\d+)x:height(\\d+)/:url(.*)', function *() {
     const originalKey = {Bucket, Key}
     const webBucketKey = {Bucket: webBucket, Key}
 
-    const resizeRequest = targetWidth !== 0
+    const resizeRequest = targetWidth !== 0 || targetHeight !== 0
     if(resizeRequest) {
         const resizedKey = Key + `_${targetWidth}x${targetHeight}`
         const thumbnailKey = {Bucket: thumbnailBucket, Key: resizedKey}
@@ -95,6 +111,20 @@ router.get('/:width(\\d+)x:height(\\d+)/:url(.*)', function *() {
             return
         }
 
+        // Sharp can't resize all frames in the animated gif .. just return the full image
+        // http://localhost:3234/1680x8400/http://mashable.com/wp-content/uploads/2013/07/ariel.gif
+        if(index === 0) { // index === 0 is used to show animations in the full-post size only
+            // Case 1 of 2: re-fetching
+            const imageHead = yield fetchHead(this, Bucket, Key, url, webBucketKey)
+            if(imageHead && imageHead.ContentType === 'image/gif') {
+                if(TRACE) console.log('image-proxy -> gif redirect (animated gif work-around)', JSON.stringify(imageHead, null, 0))
+                const url = s3.getSignedUrl('getObject', imageHead.headKey)
+                this.redirect(url)
+                return
+            }
+            // See below, one more animated gif work-around ...
+        }
+
         // no thumbnail, fetch and cache
         const imageResult = yield fetchImage(this, Bucket, Key, url, webBucketKey)
         if(!imageResult) {
@@ -103,6 +133,15 @@ router.get('/:width(\\d+)x:height(\\d+)/:url(.*)', function *() {
 
         if(TRACE) console.log('image-proxy -> original save', url, JSON.stringify(webBucketKey, null, 0))
         yield s3call('putObject', Object.assign({}, webBucketKey, imageResult))
+
+        if(index === 0 && imageResult.ContentType === 'image/gif') {
+            // Case 2 of 2: initial fetch
+            yield waitFor('objectExists', webBucketKey)
+            if(TRACE) console.log('image-proxy -> new gif redirect (animated gif work-around)', JSON.stringify(webBucketKey, null, 0))
+            const url = s3.getSignedUrl('getObject', webBucketKey)
+            this.redirect(url)
+            return
+        }
 
         try {
             if(TRACE) console.log('image-proxy -> prepare thumbnail')
@@ -144,12 +183,32 @@ router.get('/:width(\\d+)x:height(\\d+)/:url(.*)', function *() {
     yield s3call('putObject', Object.assign({}, webBucketKey, imageResult))
     yield waitFor('objectExists', webBucketKey)
 
-    if(TRACE) console.log('image-proxy -> original redirect')
+    if(TRACE) console.log('image-proxy -> original redirect', JSON.stringify(webBucketKey, null, 0))
     const signedUrl = s3.getSignedUrl('getObject', webBucketKey)
     this.redirect(signedUrl)
 })
 
-/** @return {object} - null or {Body, ContentType: string} */
+function* fetchHead(ctx, Bucket, Key, url, webBucketKey) {
+    const headKey = {Bucket, Key}
+    let head = yield s3call('headObject', headKey)
+    if(!head && Bucket === uploadBucket) {
+        // The url appeared to be in the Upload bucket but was not,
+        // double-check the webbucket to be sure.
+        head = yield s3call('headObject', webBucketKey)
+        if(TRACE) console.log('image-proxy -> fetch image head', !!head, JSON.stringify(webBucketKey, null, 0))
+        if(!head)
+            return null
+
+        return {headKey: webBucketKey, ContentType: head.ContentType}        
+    } else {
+        if(TRACE) console.log('image-proxy -> fetch image head', !!head, JSON.stringify(headKey, null, 0))
+        if(!head)
+            return null
+
+        return {headKey, ContentType: head.ContentType}
+    }
+}
+
 function* fetchImage(ctx, Bucket, Key, url, webBucketKey) {
     let img = yield s3call('getObject', {Bucket, Key})
     if(!img && Bucket === uploadBucket) {
@@ -191,34 +250,17 @@ function* fetchImage(ctx, Bucket, Key, url, webBucketKey) {
         })
     })
     if(imgResult) {
-        if(imgResult.ContentType === 'image/jpeg') {
-            try {
-                const exifData = yield exif(imgResult.Body)
-                const orientation = hasOrientation(exifData)
-                if(orientation) {
-                    // Sharp will remove EXIF info by default unless withMetadata is called..
-                    const image = sharp(imgResult.Body).withMetadata()
-
-                    // Auto-orient and remove EXIF Orientation property
-                    image.rotate()
-
-                    imgResult.Body = yield image.toBuffer()
-                }
-            } catch(error) {
-                console.error('image-proxy process image', url, error.message);
-            }
-        }
         yield s3call('putObject', Object.assign({}, webBucketKey, imgResult))
     }
     return imgResult
 }
 
 function* prepareThumbnail(imageBuffer, targetWidth, targetHeight) {
-    const image = sharp(imageBuffer).withMetadata();
+    const image = sharp(imageBuffer).withMetadata().rotate();
     const md = yield image.metadata()
-    const geo = calculateGeo(md.width, md.height, targetWidth, targetHeight, 'fit')
+    const geo = calculateGeo(md.width, md.height, targetWidth, targetHeight)
 
-    let i = image.resize(geo.finalWidth, geo.finalHeight)
+    let i = image.resize(geo.width, geo.height)
     let type = md.format
     if(md.format === 'gif') {
         // convert animated gifs into a flat png
@@ -229,11 +271,9 @@ function* prepareThumbnail(imageBuffer, targetWidth, targetHeight) {
     return {Body, ContentType: `image/${type}`}
 }
 
-function calculateGeo(origWidth, origHeight, targetWidth, targetHeight, mode) {
+function calculateGeo(origWidth, origHeight, targetWidth, targetHeight) {
     // Default ratio. Default crop.
-    var origRatio  = (origHeight !== 0 ? (origWidth / origHeight) : 1),
-        cropWidth  = origWidth,
-        cropHeight = origHeight;
+    var origRatio  = (origHeight !== 0 ? (origWidth / origHeight) : 1)
 
     // Fill in missing target dims.
     if (targetWidth === 0 && targetHeight === 0) {
@@ -249,36 +289,20 @@ function calculateGeo(origWidth, origHeight, targetWidth, targetHeight, mode) {
     if(targetWidth > origWidth)   targetWidth  = origWidth;
     if(targetHeight > origHeight) targetHeight = origHeight;
 
-    // If mode is 'fit', just scale. Otherwise crop to bounds.
     var targetRatio = targetWidth / targetHeight;
-    if(mode == 'fit') {
-        if (targetRatio > origRatio) {
-            // max out height, and calc a smaller width
-            targetWidth = Math.round(targetHeight * origRatio);
-        } else if (targetRatio < origRatio) {
-            // max out width, calc a smaller height
-            targetHeight = Math.round(targetWidth / origRatio);
-        }
-    } else {
-        if (targetRatio > origRatio) {
-            // original image too high
-            cropHeight = Math.round(origWidth / targetRatio);
-        } else if (targetRatio < origRatio) {
-            // original image too wide
-            cropWidth = Math.round(origHeight * targetRatio);
-        }
+    if (targetRatio > origRatio) {
+        // max out height, and calc a smaller width
+        targetWidth = Math.round(targetHeight * origRatio);
+    } else if (targetRatio < origRatio) {
+        // max out width, calc a smaller height
+        targetHeight = Math.round(targetWidth / origRatio);
     }
 
-    //logger.info('Original: ' + origWidth + 'x' + origHeight + ' -> Target: ' + targetWidth + 'x' + targetHeight);
+    // console.log('Original: ' + origWidth + 'x' + origHeight + ' -> Target: ' + targetWidth + 'x' + targetHeight);
 
     return {
-        // This will be final size
-        finalWidth:  targetWidth,
-        finalHeight: targetHeight,
-
-        // This is crop region (unused for now)
-        cropWidth:  cropWidth,
-        cropHeight: cropHeight
+        width:  targetWidth,
+        height: targetHeight,
     };
 }
 
