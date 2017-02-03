@@ -50,7 +50,7 @@ router.get('/:width(\\d+)x:height(\\d+)/:url(.*)', function *() {
     const targetHeight = parseInt(this.params.height, 10)
 
     const dimensions = [
-        [1680, 1050],
+        [1680, 8400], // index === 0 is a special case for animated gifs (see below)
         [640, 480],
         [256, 512],
         [320, 320],
@@ -105,6 +105,20 @@ router.get('/:width(\\d+)x:height(\\d+)/:url(.*)', function *() {
             return
         }
 
+        // Sharp can't resize all frames in the animated gif .. just return the full image
+        // http://localhost:3234/1680x8400/http://mashable.com/wp-content/uploads/2013/07/ariel.gif
+        if(index === 0) {
+            // Case 1 of 2: re-fetching
+            const imageHead = yield fetchHead(this, Bucket, Key, url, webBucketKey)
+            if(imageHead && imageHead.ContentType === 'image/gif') {
+                if(TRACE) console.log('image-proxy -> gif redirect (animated gif work-around)', JSON.stringify(imageHead, null, 0))
+                const url = s3.getSignedUrl('getObject', imageHead.headKey)
+                this.redirect(url)
+                return
+            }
+            // See below, one more animated gif work-around ...
+        }
+
         // no thumbnail, fetch and cache
         const imageResult = yield fetchImage(this, Bucket, Key, url, webBucketKey)
         if(!imageResult) {
@@ -113,6 +127,15 @@ router.get('/:width(\\d+)x:height(\\d+)/:url(.*)', function *() {
 
         if(TRACE) console.log('image-proxy -> original save', url, JSON.stringify(webBucketKey, null, 0))
         yield s3call('putObject', Object.assign({}, webBucketKey, imageResult))
+
+        if(index === 0 && imageResult.ContentType === 'image/gif') {
+            // Case 2 of 2: initial fetch
+            yield waitFor('objectExists', webBucketKey)
+            if(TRACE) console.log('image-proxy -> new gif redirect (animated gif work-around)', JSON.stringify(webBucketKey, null, 0))
+            const url = s3.getSignedUrl('getObject', webBucketKey)
+            this.redirect(url)
+            return
+        }
 
         try {
             if(TRACE) console.log('image-proxy -> prepare thumbnail')
@@ -159,7 +182,27 @@ router.get('/:width(\\d+)x:height(\\d+)/:url(.*)', function *() {
     this.redirect(signedUrl)
 })
 
-/** @return {object} - null or {Body, ContentType: string} */
+function* fetchHead(ctx, Bucket, Key, url, webBucketKey) {
+    const headKey = {Bucket, Key}
+    let head = yield s3call('headObject', headKey)
+    if(!head && Bucket === uploadBucket) {
+        // The url appeared to be in the Upload bucket but was not,
+        // double-check the webbucket to be sure.
+        head = yield s3call('headObject', webBucketKey)
+        if(TRACE) console.log('image-proxy -> fetch image head', !!head, JSON.stringify(webBucketKey, null, 0))
+        if(!head)
+            return null
+
+        return {headKey: webBucketKey, ContentType: head.ContentType}        
+    } else {
+        if(TRACE) console.log('image-proxy -> fetch image head', !!head, JSON.stringify(headKey, null, 0))
+        if(!head)
+            return null
+
+        return {headKey, ContentType: head.ContentType}
+    }
+}
+
 function* fetchImage(ctx, Bucket, Key, url, webBucketKey) {
     let img = yield s3call('getObject', {Bucket, Key})
     if(!img && Bucket === uploadBucket) {
