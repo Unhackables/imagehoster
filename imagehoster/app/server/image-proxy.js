@@ -55,22 +55,6 @@ router.get('/:width(\\d+)x:height(\\d+)/:url(.*)', function *() {
         targetHeight = 8400
     }
 
-    const dimensions = [
-        [1680, 8400], // index === 0 is a special case for animated gifs (see below)
-        [640, 480],
-        [256, 512],
-        [320, 320],
-        [128, 256],
-        [120, 120],
-        [0, 0],
-    ]
-
-    const index = dimensions.findIndex(tuple => targetWidth === tuple[0] && targetHeight === tuple[1])
-    if(index === -1) {
-        statusError(this, 400, 'Bad Request. URL dimension `WIDTH`x`HEIGHT` should match: ' + JSON.stringify(dimensions, null, 0))
-        return
-    }
-
     // image blacklist
     const blacklist = [
         'https://pbs.twimg.com/media/CoN_sC6XEAE7VOB.jpg:large',
