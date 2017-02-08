@@ -3,7 +3,6 @@ import {s3} from 'app/server/amazon-bucket'
 import {missing, getRemoteIp, limit} from 'app/server/utils-koa'
 
 const {uploadBucket} = config
-const {downloadIpLimit} = config
 
 const router = require('koa-router')()
 

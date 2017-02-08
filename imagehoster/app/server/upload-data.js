@@ -16,7 +16,6 @@ import sharp from 'sharp'
 const testKey = config.testKey ? PrivateKey.fromSeed('').toPublicKey() : null
 
 const {uploadBucket, protocol, host, port} = config
-const {uploadIpLimit, uploadDataLimit} = config
 
 const s3 = new AWS.S3()
 
@@ -190,7 +189,7 @@ router.post('/:username/:signature', koaBody, function *() {
     }
 
     yield new Promise(resolve => {
-        s3.putObject(params, (err, data) => {
+        s3.putObject(params, (err/*, data*/) => {
             if(err) {
                 console.log(err)
                 this.status = 400

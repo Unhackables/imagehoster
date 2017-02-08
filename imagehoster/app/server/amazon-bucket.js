@@ -21,7 +21,7 @@ export function s3call(method, params) {
     @arg {string} what = objectExists, ..
     @arg {object} params = {Bucket, Key}
 */
-export function waitFor(method, params, responseHeaders) {
+export function waitFor(method, params/*, responseHeaders*/) {
     return new Promise((resolve, reject) => {
         s3.waitFor(method, params, function(err, data) {
             if (err) {

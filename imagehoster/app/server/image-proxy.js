@@ -1,14 +1,9 @@
 
-import fs from 'fs'
-import AWS from 'aws-sdk'
 import config from 'config'
-import {hash} from 'shared/ecc'
 import {sha1, mhashEncode} from 'app/server/hash'
 import {missing, statusError} from 'app/server/utils-koa'
 import {waitFor, s3call, s3} from 'app/server/amazon-bucket'
 
-import base58 from 'bs58'
-import multihash from 'multihashes'
 import fileType from 'file-type'
 import request from 'request'
 import sharp from 'sharp'
@@ -93,8 +88,8 @@ router.get('/:width(\\d+)x:height(\\d+)/:url(.*)', function *() {
         if(hasThumbnail) {
             const params = {Bucket: thumbnailBucket, Key: resizedKey, Expires: 60}
             if(TRACE) console.log('image-proxy -> thumbnail redirect')
-            const url = s3.getSignedUrl('getObject', params)
-            this.redirect(url)
+            const signedUrl = s3.getSignedUrl('getObject', params)
+            this.redirect(signedUrl)
             return
         }
 
@@ -105,8 +100,8 @@ router.get('/:width(\\d+)x:height(\\d+)/:url(.*)', function *() {
             const imageHead = yield fetchHead(this, Bucket, Key, url, webBucketKey)
             if(imageHead && imageHead.ContentType === 'image/gif') {
                 if(TRACE) console.log('image-proxy -> gif redirect (animated gif work-around)', JSON.stringify(imageHead, null, 0))
-                const url = s3.getSignedUrl('getObject', imageHead.headKey)
-                this.redirect(url)
+                const signedUrl = s3.getSignedUrl('getObject', imageHead.headKey)
+                this.redirect(signedUrl)
                 return
             }
             // See below, one more animated gif work-around ...
@@ -125,8 +120,8 @@ router.get('/:width(\\d+)x:height(\\d+)/:url(.*)', function *() {
             // Case 2 of 2: initial fetch
             yield waitFor('objectExists', webBucketKey)
             if(TRACE) console.log('image-proxy -> new gif redirect (animated gif work-around)', JSON.stringify(webBucketKey, null, 0))
-            const url = s3.getSignedUrl('getObject', webBucketKey)
-            this.redirect(url)
+            const signedUrl = s3.getSignedUrl('getObject', webBucketKey)
+            this.redirect(signedUrl)
             return
         }
 
@@ -139,14 +134,14 @@ router.get('/:width(\\d+)x:height(\\d+)/:url(.*)', function *() {
             yield waitFor('objectExists', thumbnailKey)
 
             if(TRACE) console.log('image-proxy -> thumbnail redirect', JSON.stringify(thumbnailKey, null, 0))
-            const url = s3.getSignedUrl('getObject', thumbnailKey)
-            this.redirect(url)
+            const signedUrl = s3.getSignedUrl('getObject', thumbnailKey)
+            this.redirect(signedUrl)
         } catch(error) {
             console.error('image-proxy resize error', this.request.originalUrl, error, error ? error.stack : undefined)
             yield waitFor('objectExists', webBucketKey)
             if(TRACE) console.log('image-proxy -> resize error redirect', url)
-            const url = s3.getSignedUrl('getObject', webBucketKey)
-            this.redirect(url)
+            const signedUrl = s3.getSignedUrl('getObject', webBucketKey)
+            this.redirect(signedUrl)
         }
         return
     }
@@ -156,8 +151,8 @@ router.get('/:width(\\d+)x:height(\\d+)/:url(.*)', function *() {
     const hasOriginal = !!(yield s3call('headObject', originalKey))
     if(hasOriginal) {
         if(TRACE) console.log('image-proxy -> original redirect', JSON.stringify(originalKey, null, 0))
-        const url = s3.getSignedUrl('getObject', originalKey)
-        this.redirect(url)
+        const signedUrl = s3.getSignedUrl('getObject', originalKey)
+        this.redirect(signedUrl)
         return
     }
 
@@ -260,7 +255,7 @@ function* prepareThumbnail(imageBuffer, targetWidth, targetHeight) {
 
 function calculateGeo(origWidth, origHeight, targetWidth, targetHeight) {
     // Default ratio. Default crop.
-    var origRatio  = (origHeight !== 0 ? (origWidth / origHeight) : 1)
+    const origRatio  = (origHeight !== 0 ? (origWidth / origHeight) : 1)
 
     // Fill in missing target dims.
     if (targetWidth === 0 && targetHeight === 0) {
@@ -276,7 +271,7 @@ function calculateGeo(origWidth, origHeight, targetWidth, targetHeight) {
     if(targetWidth > origWidth)   targetWidth  = origWidth;
     if(targetHeight > origHeight) targetHeight = origHeight;
 
-    var targetRatio = targetWidth / targetHeight;
+    const targetRatio = targetWidth / targetHeight;
     if (targetRatio > origRatio) {
         // max out height, and calc a smaller width
         targetWidth = Math.round(targetHeight * origRatio);

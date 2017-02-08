@@ -25,7 +25,7 @@ function esc(value, max_length = 256) {
     if (!value) return '';
     if (typeof value === 'number') return value;
     if (typeof value !== 'string') return '(object)';
-    let res = value.substring(0, max_length - max_length * 0.2).replace(/[\0\x08\x09\x1a\n\r"'\\\%]/g, function (char) {
+    const res = value.substring(0, max_length - max_length * 0.2).replace(/[\0\x08\x09\x1a\n\r"'\\\%]/g, function (char) {
         switch (char) {
             case '\0':
                 return '\\0';
