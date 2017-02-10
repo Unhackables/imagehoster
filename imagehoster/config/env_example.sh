@@ -1,6 +1,18 @@
+export NODE_ENV=production
+export STEEMIT_UPLOAD_TEST_KEY=false
 
-#export STEEMIT_UPLOAD_STEEMD_WEBSOCKET="wss://node.steem.ws"
+#export NODE_ENV=development
+#export STEEMIT_UPLOAD_TEST_KEY=true
+#export STEEMIT_IMAGEPROXY_TRACE=true
+#export STEEMIT_UPLOAD_HTTP_PROTOCOL=http
+#export STEEMIT_UPLOAD_HTTP_HOST=localhost
 
-export STEEMIT_UPLOAD_AWS_KEY_ID=
-export STEEMIT_UPLOAD_AWS_SECRET_KEY=
+export STEEMIT_UPLOAD_STEEMD_WEBSOCKET="wss://steemit.com/wspa"
 
+export AWS_ACCESS_KEY_ID=
+export AWS_SECRET_ACCESS_KEY=
+#export AWS_DEFAULT_REGION=us-west-2
+
+# export STEEMIT_IMAGEPROXY_BUCKET_UPLOAD=steemit-imageproxy-upload
+# export STEEMIT_IMAGEPROXY_BUCKET_WEB=steemit-imageproxy-web
+# export STEEMIT_IMAGEPROXY_BUCKET_THUMBNAIL=steemit-imageproxy-thumbnail
