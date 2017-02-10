@@ -1,7 +1,7 @@
 const toBoolean = s => s == null || s.trim() === '' ? false : JSON.parse(s)
 
-const {NODE_ENV = 'development'} = process.env
-const dev = NODE_ENV === 'development'
+const {NODE_ENV = 'dev'} = process.env
+const dev = NODE_ENV === 'dev'
 
 const config = {
     ws_connection_server: process.env.STEEMIT_UPLOAD_STEEMD_WEBSOCKET || 'wss://node.steem.ws',

@@ -1,7 +1,7 @@
 export NODE_ENV=production
 export STEEMIT_UPLOAD_TEST_KEY=false
 
-#export NODE_ENV=development
+#export NODE_ENV=dev
 #export STEEMIT_UPLOAD_TEST_KEY=true
 #export STEEMIT_IMAGEPROXY_TRACE=true
 #export STEEMIT_UPLOAD_HTTP_PROTOCOL=http
