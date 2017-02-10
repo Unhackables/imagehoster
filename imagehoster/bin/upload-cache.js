@@ -12,12 +12,6 @@
 const cacheDir = process.argv[2] || '../../imageproxy/cache'
 
 const AWS = require('aws-sdk')
-if(process.env['STEEMIT_IMAGEPROXY_AWS_KEY_ID']) {
-    AWS.config.accessKeyId = process.env['STEEMIT_IMAGEPROXY_AWS_KEY_ID']
-}
-if(process.env['STEEMIT_IMAGEPROXY_AWS_SECRET_KEY']) {
-    AWS.config.secretAccessKey = process.env['STEEMIT_IMAGEPROXY_AWS_SECRET_KEY']
-}
 
 const webBucket = process.env.STEEMIT_IMAGEPROXY_BUCKET_WEB || 'steemit-dev-imageproxy-web'
 const thumbnailBucket = process.env.STEEMIT_IMAGEPROXY_BUCKET_THUMBNAIL || 'steemit-dev-imageproxy-thumbnail'

@@ -200,7 +200,10 @@ router.post('/:username/:signature', koaBody, function *() {
             }
             console.log(`Uploaded '${fname}' to s3://${uploadBucket}/${key}`);
             const fnameUri = encodeURIComponent(fname)
-            const url = `${protocol}://${host}:${port}/${key}/${fnameUri}`
+            const url = protocol === 'https' ?
+                `https://${host}/${key}/${fnameUri}` :
+                `${protocol}://${host}:${port}/${key}/${fnameUri}`
+
             this.body = {url}
             resolve()
         })
