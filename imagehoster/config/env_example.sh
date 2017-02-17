@@ -7,7 +7,7 @@ export STEEMIT_UPLOAD_TEST_KEY=false
 #export STEEMIT_UPLOAD_HTTP_PROTOCOL=http
 #export STEEMIT_UPLOAD_HTTP_HOST=localhost
 
-export STEEMIT_UPLOAD_STEEMD_WEBSOCKET="wss://steemit.com/wspa"
+export STEEMIT_UPLOAD_STEEMD_WEBSOCKET="wss://steemd.steemit.com"
 
 export AWS_ACCESS_KEY_ID=
 export AWS_SECRET_ACCESS_KEY=
