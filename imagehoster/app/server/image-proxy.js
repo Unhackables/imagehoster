@@ -1,7 +1,7 @@
 
 import config from 'config'
 import {sha1, mhashEncode} from 'app/server/hash'
-import {missing, statusError} from 'app/server/utils-koa'
+import {missing, statusError, notFound} from 'app/server/utils-koa'
 import {waitFor, s3call, s3} from 'app/server/amazon-bucket'
 
 import fileType from 'file-type'
@@ -69,7 +69,7 @@ router.get('/:width(\\d+)x:height(\\d+)/:url(.*)', function *() {
         return
     }
 
-    // Uploaded images were keyed by the hash of the image data and store these in the upload bucket.  
+    // Uploaded images were keyed by the hash of the image data and store these in the upload bucket.
     // The proxy images use the hash of image url and are stored in the web bucket.
     const isUpload = simpleHashRe.test(url) // DQm...
     const Key = isUpload ? url.match(simpleHashRe)[0] : urlHash(url) // UQm...
@@ -181,7 +181,7 @@ function* fetchHead(ctx, Bucket, Key, url, webBucketKey) {
         if(!head)
             return null
 
-        return {headKey: webBucketKey, ContentType: head.ContentType}        
+        return {headKey: webBucketKey, ContentType: head.ContentType}
     } else {
         if(TRACE) console.log('image-proxy -> fetch image head', !!head, JSON.stringify(headKey, null, 0))
         if(!head)
@@ -218,17 +218,14 @@ function* fetchImage(ctx, Bucket, Key, url, webBucketKey) {
             if (imageBuffer) {
                 const ftype = fileType(imageBuffer)
                 if(!ftype || !/^image\/(gif|jpeg|png)$/.test(ftype.mime)) {
-                    statusError(ctx, 400, 'Supported image formats are: gif, jpeg, and png')
-                    resolve()
+                    resolve(notFound(ctx, url))
                     return
                 }
                 const {mime} = ftype
                 resolve({Body: imageBuffer, ContentType: mime})
                 return
             }
-            console.log('404 Not Found', url);
-            statusError(ctx, 404, 'Not Found')
-            resolve()
+            resolve(notFound(ctx, url))
         })
     })
     if(imgResult) {

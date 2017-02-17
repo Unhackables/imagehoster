@@ -1,3 +1,4 @@
+import fs from 'fs'
 
 export function missing(ctx, fields, name, errorText = name) {
     if(!fields || !fields[name]) {
@@ -14,6 +15,35 @@ export function statusError(ctx, code, text) {
     ctx.statusText = text
     ctx.body = {error: ctx.statusText}
 }
+
+let notFoundPngData
+
+export function notFound(ctx, url) {
+    if(!notFoundPngData) {
+        return new Promise(resolve => {
+            fs.readFile('assets/missing.png', (err, data) => {
+                if(err) {
+                    console.error(err);
+                    resolve()
+                } else {
+                    notFoundPngData = data
+                    resolve(notFound(ctx, url))
+                }
+            });
+        })
+    }
+    console.log('404 Not Found', url)
+    if(notFoundPngData) {
+        ctx.status = 404
+        ctx.statusError = 'Not Found'
+        ctx.type = 'image/png'
+        ctx.body = notFoundPngData
+    } else {
+        ctx.status = 404
+        ctx.statusError = 'Not Found'
+    }
+}
+
 
 export function getRemoteIp(req) {
     const remote_address = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
@@ -61,7 +91,7 @@ export function* limit(ctx, type, key, description, unitLabel, amount = 1) {
         if(over) throw desc
     } catch(error) {
         // console.error(error)
-        if(typeof error === 'string') { 
+        if(typeof error === 'string') {
             ctx.status = 400
             ctx.statusText = error
             ctx.body = {error: ctx.statusText}
